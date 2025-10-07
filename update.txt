@@ -1,0 +1,3 @@
+funzionante la gestione dei layer tramite istruzioni da instruciton memory,
+unica cosa che inserisco manualmente il numero dei neuroni in layer_lp per la dimensione della fifo
+istruction memory funzionante via BRAM

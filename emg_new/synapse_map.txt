@@ -1,0 +1,32 @@
+=== SYNAPSE MAP ===
+
+Layer 1 (FC1 Dense)
+  Neurons: 100, Synapses: 32
+  Stored 16 per row → 2 rows
+  Total stored per neuron: 32
+
+Layer 2 (CONV1)
+  Output feature map size: 8x8
+  Channels: 4
+   - OutFeat 0: [16, 16, 16, 16]
+   - OutFeat 1: [16, 16, 16, 16]
+   - OutFeat 2: [16, 16, 16, 16]
+   - OutFeat 3: [16, 16, 16, 16]
+
+Layer 3 (CONV2)
+  Output feature map size: 6x6
+  Channels: 8
+   - OutFeat 0: [16, 16, 4]
+   - OutFeat 1: [16, 16, 4]
+   - OutFeat 2: [16, 16, 4]
+   - OutFeat 3: [16, 16, 4]
+   - OutFeat 4: [16, 16, 4]
+   - OutFeat 5: [16, 16, 4]
+   - OutFeat 6: [16, 16, 4]
+   - OutFeat 7: [16, 16, 4]
+
+Layer 4 (FC4 Dense)
+  Neurons: 12, Synapses: 288
+  Stored 16 per row → 18 rows
+  Total stored per neuron: 288
+

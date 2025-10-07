@@ -1,0 +1,33 @@
+=== LAYER 1: FC1 (Dense Embedding) ===
+Neurons: 100
+Synapses: 32
+Voltage decay: 41
+Threshold: 5
+
+=== LAYER 2: CONV1 ===
+In channels: 1
+Out channels: 4
+Input HxW: 10x10
+Output HxW: 8x8
+Neurons (n2): 256
+Kernel: 3x3
+Stride: 1
+Voltage decay: 41
+Threshold: 10
+
+=== LAYER 3: CONV2 ===
+In channels: 4
+Out channels: 8
+Input HxW: 8x8
+Output HxW: 6x6
+Neurons (n3): 288
+Kernel: 3x3
+Stride: 1
+Voltage decay: 41
+Threshold: 15
+
+=== LAYER 4: FC4 (Dense Output) ===
+Neurons: 12
+Synapses: 288
+Voltage decay: 41
+Threshold: 200

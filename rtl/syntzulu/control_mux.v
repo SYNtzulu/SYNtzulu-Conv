@@ -1,0 +1,71 @@
+module controll_mux#(
+    parameter MAX_INPUT_FEATURE=16,
+    parameter MAX_KERNEL=3
+) (
+	input clk,
+	input en,
+	input rst,
+	input [1:0] stride,
+	input input_feature_ready,
+	input conv_enable,
+    input [3:0] dim_input_feature_minus_kernel,
+	output wire [2:0] sel_A,
+	output wire [2:0] sel_B,
+	output wire [2:0] sel_C,
+	output wire [1:0] sel_k0,
+	output wire [1:0] sel_k1,
+	output wire [1:0] sel_k2, 
+	output wire row_finish
+);
+
+	reg [3:0] state;
+	reg [3:0] next_state;
+
+	assign row_finish = (next_state >= dim_input_feature_minus_kernel) && en && input_feature_ready;
+
+	always @(posedge clk) begin
+		if (rst) begin
+			state <= 0;
+			next_state <= 0;
+		end else if(conv_enable) begin
+			if (en && input_feature_ready) begin
+				// Calcola prossimo stato
+				next_state = (state >= dim_input_feature_minus_kernel) ? 0 : state + stride;
+				// Aggiorna stato
+				state <= next_state;
+			end
+		end
+		else begin
+			state <= 0;
+			next_state <= 0;
+		end
+	end
+
+	assign {sel_A, sel_B, sel_C, sel_k0, sel_k1, sel_k2} = 
+		(next_state == 0) ? {3'd5, 3'd4, 3'd4, 2'd2, 2'd1, 2'd0} :
+		(next_state == 1) ? {3'd4, 3'd4, 3'd4, 2'd1, 2'd0, 2'd2} :
+		(next_state == 2) ? {3'd4, 3'd3, 3'd4, 2'd0, 2'd2, 2'd1} :
+		(next_state == 3) ? {3'd4, 3'd3, 3'd3, 2'd2, 2'd1, 2'd0} :
+		(next_state == 4) ? {3'd3, 3'd3, 3'd3, 2'd1, 2'd0, 2'd2} :
+		(next_state == 5) ? {3'd3, 3'd2, 3'd3, 2'd0, 2'd2, 2'd1} :
+		(next_state == 6) ? {3'd3, 3'd2, 3'd2, 2'd2, 2'd1, 2'd0} :
+		(next_state == 7) ? {3'd2, 3'd2, 3'd2, 2'd1, 2'd0, 2'd2} :
+		(next_state ==8 ) ? {3'd2, 3'd1, 3'd2, 2'd0, 2'd2, 2'd1} :
+		(next_state ==9 ) ? {3'd2, 3'd1, 3'd1, 2'd2, 2'd1, 2'd0} :
+		(next_state ==10 ) ? {3'd1, 3'd1, 3'd1, 2'd1, 2'd0, 2'd2} :
+		(next_state ==11 ) ? {3'd1, 3'd0, 3'd1, 2'd0, 2'd2, 2'd1} :
+		(next_state ==12 ) ? {3'd1, 3'd0, 3'd0, 2'd2, 2'd1, 2'd0} :
+		(next_state ==13 ) ? {3'd0, 3'd0, 3'd0, 2'd1, 2'd0, 2'd2} :
+		                     15'd0;
+
+	function integer clogb2(input integer value);
+        integer i;
+        begin
+            value = value - 1;
+            for (i = 0; value > 0; i = i + 1)
+                value = value >> 1;
+            clogb2 = i;
+        end
+    endfunction
+
+endmodule

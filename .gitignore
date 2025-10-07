@@ -1,0 +1,35 @@
+# Cartelle di output o di lavoro
+output/
+work/
+emg/
+
+# File di simulazione
+*.vcd
+*.vvp
+*.log
+*.out
+*.dump
+
+# File temporanei
+*.tmp
+*.swp
+*.bak
+*.~*
+
+# File di sistema
+.DS_Store
+Thumbs.db
+
+# Backup e cache
+*.pyc
+__pycache__/
+.cache/
+*.class
+
+# File di configurazione locali
+.env
+*.local
+
+# Visual Studio Code
+.vscode/
+work/tb_serv.vcd
