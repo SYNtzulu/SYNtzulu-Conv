@@ -44,13 +44,18 @@ static void read_sample_mem();
 // send inference 
 static void send_inference();
 
+//DEBUG
+static void uart_send_string(const char *s) ;
+static void uart_send_char(char c);
+
 // sample address
 volatile uint32_t sample_addr = 0;
 
 int main(void) {
 	// enable clocks	
 	DEV_WRITE(CLOCK_GATING, 0);     
-
+	uart_send_string("ciao\r\n");
+	
 	// Global interrupt disable
     clear_csr(mstatus, MSTATUS_MIE_BIT_MASK);
     write_csr(mie, 0);
@@ -179,3 +184,16 @@ static void send_inference() {
 	DEV_WRITE(VALID_INFERENCE_RST,1);		
 	DEV_WRITE(VALID_INFERENCE_RST,0);
 }
+//DEBUG
+static void uart_send_char(char c) {
+    DEV_WRITE(UART_DATA_ADDR, c);
+    DEV_WRITE(UART_SEND_ADDR, 1);
+    while(!DEV_READ(UART_READY_ADDR));
+}
+
+static void uart_send_string(const char *s) {
+    while (*s) {
+        uart_send_char(*s++);
+    }
+}
+

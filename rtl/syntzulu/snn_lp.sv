@@ -204,7 +204,7 @@ lif_pipe lif_pipe_i (
     .en_L2_out(en_L2_out)
 );
 
-assign detection_computed = conv_enable ? detection_out_pipe : spike_check; // se conv_enable è attivo, allora il detection_computed è uguale al detection_out_pipe, altrimenti è sempre 1
+assign detection_computed = conv_enable ? detection_out_pipe : spike_check;
 
 layer_lp
     #(
@@ -224,7 +224,7 @@ layer_lp_l1_i
     (
     .clk(clk), .rst(rst),
     .en(layer_enable_dd),
-    .spike_in(conv_enable ? 4'b1111 : spike_mem_out),
+    .spike_in(spike_mem_out),
     .active_group_in(),
 
     .current_decay(current_decay),
@@ -300,7 +300,7 @@ layer_lp_l2_i
     (
     .clk(clk), .rst(rst),
     .en(layer_enable_dd && conv_en_L2),
-    .spike_in(conv_enable ? 4'b1111 : spike_mem_out),
+    .spike_in(spike_mem_out),
     .active_group_in(),
 
     .layer_type(layer_type),
@@ -410,7 +410,6 @@ wire [clogb2(MAX_NEURONS/2-1)-1:0] NEURON;
 wire dense_enable;
 
 assign NEURON = (dense_enable) ? (neuron+1)/2-1 : 0;
-assign dense_enable = (layer_type == 2'b00) ? 1 : 0;
 
 // neuron_cnt increases when the weights of a neuron are read
 wire stream_out_done;
@@ -418,7 +417,7 @@ assign stream_out_done = stream_out_done_2 || stream_out_done_1;
 always @(posedge clk)
     if(rst)
         neuron_cnt <= 0;
-    else //if(dense_enable)
+    else
         if (stream_out_done) begin
             if ((neuron_cnt < NEURON) ) 
                 neuron_cnt <= neuron_cnt + 1'b1;
@@ -463,16 +462,15 @@ wire conv_en;
 wire [3:0] dim_output_feature;
 
 assign conv_enable = (layer_type == 2'b01) ? 1 : 0;
+assign dense_enable = (layer_type == 2'b00) ? 1 : 0;
 
 always @(posedge clk)
     if (rst)
         en_conv <= 0;
-    else if (dense_enable)
+    else if (dense_enable | convolution_finish)
         en_conv <= 0;
-    else if ((layer_counter != 0 && layer_integrated_dd && conv_enable)||(spike_written_counter == 1 && spike_written_d))
+    else if (((layer_counter != 0 && layer_integrated_dd)||(spike_written_counter == 1 && spike_written_d)) && conv_enable)
         en_conv <= 1;
-    else if (convolution_finish)
-        en_conv <= 0;
 
 conv_controll #(
     .MAX_KERNEL(MAX_KERNEL),
@@ -537,18 +535,14 @@ conv_controll #(
 
 /////// LAYER ENABLE /////////////////////////////////////////////////
 reg layer_enable, layer_enable_d, layer_enable_dd;
-always @(posedge clk)
+always @(posedge clk) begin
     if (rst)
-		layer_enable <= 0;
-    else if (en_conv)
-        layer_enable <= 1;
-    else if (stream_out_1 | stream_out_2)
-		layer_enable <= 1;
-	else if (stream_out_done && (neuron_cnt == NEURON))
-		layer_enable <= 0;
-    else if (convolution_finish)
-        layer_enable <= 0;
-    
+        layer_enable <= 1'b0;
+    else if (en_conv || stream_out_1 || stream_out_2)
+        layer_enable <= 1'b1;
+    else if (convolution_finish || (stream_out_done && (neuron_cnt == NEURON)))
+        layer_enable <= 1'b0;
+end 
 
 always @(posedge clk)
     if (rst) begin
@@ -575,15 +569,14 @@ assign words_to_read = layer_counter[0]? words_to_read_2 : words_to_read_1;
 
 reg [clogb2(MAX_SYNAPSES/4-1)-1:0] convolution_valid_cnt;
 always @(posedge clk)
-    if (rst)
+    if (rst || conv_enable)
         convolution_valid_cnt <= 0;
-    else if (convolution_pipe_full)
+    else if (convolution_pipe_full) begin
             if(convolution_valid_cnt < words_to_read)
                 convolution_valid_cnt <= convolution_valid_cnt + 1'b1;
             else
                 convolution_valid_cnt <= 0;
-    else if(conv_enable)
-        convolution_valid_cnt <= 0;
+    end
  
 assign convolution_valid = (convolution_valid_cnt == words_to_read) && convolution_pipe_full; 
 
@@ -750,7 +743,12 @@ wire valid_active_spike = (valid_active_group) && (active_spike);
 assign stack_en_1 = valid_active_spike && (layer_counter[0] || en_d); 
 assign stream_out_1 = (spike_written && ~spike_written_counter[0]) || (stream_out_done_1  && (neuron_cnt != NEURON));
 
-stack
+wire stack_en_2;
+assign stack_en_2 = valid_active_spike && (~layer_counter[0] && !en_d);
+assign stream_out_2 = (spike_written && spike_written_counter[0]) || (stream_out_done_2 && (neuron_cnt != NEURON));
+
+
+stack_new
 #(
 .DATA_WIDTH(clogb2(MAX_SYNAPSES/4-1)),
 .DEPTH(MAX_SYNAPSES/4)
@@ -769,11 +767,8 @@ stack_1
 .empty(empty_1)
 );
 
-wire stack_en_2;
-assign stack_en_2 = valid_active_spike && (~layer_counter[0] && !en_d);
-assign stream_out_2 = (spike_written && spike_written_counter[0]) || (stream_out_done_2 && (neuron_cnt != NEURON));
 
-stack
+stack_new
 #(
 .DATA_WIDTH(clogb2(MAX_SYNAPSES/4-1)),
 .DEPTH(MAX_SYNAPSES/4)
@@ -791,6 +786,7 @@ stack_2
 .active_entries(words_to_read_2),
 .empty(empty_2)
 );
+
 
 // stack enable to stream out the rd_address for spike_mem and weight_mem
 wire [clogb2(MAX_SYNAPSES_CONV/4-1)-1:0] spike_rd_addr;
@@ -824,7 +820,7 @@ assign spike_rd_addr_1_mux = i_spike_mem_rd_en[0] ? i_spike_mem_adr :
                             conv_enable ? spike_mem_rd_addr_conv : spike_rd_addr_1;
 assign spike_rd_addr_2_mux = i_spike_mem_rd_en[1] ? i_spike_mem_adr : 
                             conv_enable ? spike_mem_rd_addr_conv : spike_rd_addr_2;
-assign o_spike_mem_dat = {spike_mem_out_2,spike_mem_out_1};
+assign o_spike_mem_dat = {spike_mem_out_4,spike_mem_out_4};
 
 assign spike_wr_addr_mux = spike_wr_addr;
 
@@ -871,7 +867,8 @@ spike_mem #(
 
 wire [3:0] spike_mem_out, spike_mem_out_4;
 wire [15:0] spike_mem_out_16;
-assign spike_mem_out = empty?4'b0:spike_mem_out_4;
+assign spike_mem_out = conv_enable ? 4'b1111 : 
+                        empty ? 4'b0: spike_mem_out_4;
 
 wire [WEIGHT_ADDRESS_SIZE-1:0] weight_rd_addr_dense;
 wire [WEIGHT_ADDRESS_SIZE-1:0] weight_rd_addr_conv;

@@ -1,15 +1,15 @@
 # clock and reset
 set_io i_clk        35
-set_frequency i_clk 12
+#set_frequency i_clk 12
 set_io -nowarn i_rst 20
 
-set_frequency wb_clk      24
-set_frequency spi_clk     24
-set_frequency spi_clk_g   24
-set_frequency wb_clk_enc  24
-set_frequency wb_clk_snn  24
-set_frequency wb_clk_serv 24
-set_frequency timer_clk   24
+#set_frequency wb_clk      24
+#set_frequency spi_clk     24
+#set_frequency spi_clk_g   24
+#set_frequency wb_clk_enc  24
+#set_frequency wb_clk_snn  24
+#set_frequency wb_clk_serv 24
+#set_frequency timer_clk   24
 
 
 # buttons 

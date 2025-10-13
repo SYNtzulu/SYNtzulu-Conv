@@ -64,6 +64,7 @@ module conv_controll #(
     reg [MAX_INPUT_FEATURE*MAX_KERNEL-1:0] input_feature;
     wire input_feature_ready;
     wire row_finish;
+    wire row_finish_new_kernel = row_finish && new_kernel;
     reg [clogb2(MAX_INPUT_FEATURE)-1:0] input_feature_row_cnt;
 
     reg [clogb2(MAX_NUMBER_INPUT_FEATURE)-1:0] input_feature_cnt;
@@ -100,7 +101,7 @@ module conv_controll #(
                 write_en_weight_buffer <= 1'b0;
             end
         end else begin
-            weight_rd_addr <= '0;
+            weight_rd_addr <= 0;
             count_weights  <= 2'd0;
             write_en_weight_buffer <= 1'b0;
         end
@@ -150,7 +151,7 @@ module conv_controll #(
         end else begin 
             if (input_feature_finish)
                 input_feature_row_cnt <= 0;
-            else if (row_finish && new_kernel) begin
+            else if (row_finish_new_kernel) begin
                 input_feature_row_cnt <= input_feature_row_cnt + 1;
             end
         end
@@ -188,7 +189,7 @@ module conv_controll #(
 
     wire [3:0] dim_input_feature_minus_kernel = dim_input_feature - dim_kernel;
     assign dim_output_feature = dim_input_feature_minus_kernel + 1;
-    assign input_feature_finish = (row_finish && new_kernel) && (input_feature_row_cnt == dim_input_feature_minus_kernel);
+    assign input_feature_finish = row_finish_new_kernel && (input_feature_row_cnt == dim_input_feature_minus_kernel);
     assign all_input_feature_finish = input_feature_finish && (input_feature_cnt == number_input_feature_minus_one);
     assign output_feature_finish = all_input_feature_finish;
     wire conv_finish = output_feature_finish && (output_feature_cnt >= number_output_feature_minus_two);
@@ -261,7 +262,7 @@ module conv_controll #(
             head <= 0;
         end 
         else if(convolution_enable_dd)begin
-            if ((row_counter_dd < dim_kernel)||(row_finish && new_kernel)) begin
+            if ((row_counter_dd < dim_kernel)||(row_finish_new_kernel)) begin
                 row_buffer[head] <= input_feature_row;
                 head <= (head == dim_kernel_minus_one) ? 0 : head + 1;
             end

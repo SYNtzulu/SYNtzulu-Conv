@@ -18,6 +18,7 @@ module instruction_memory #(
     localparam ADDR_WIDTH = clogb2(INSTR_DEPTH-1);
     reg [ADDR_WIDTH-1:0] addr;
     reg [ADDR_WIDTH-1:0] instr_counter;
+    wire [ADDR_WIDTH-1:0] instr_counter_plus_four = instr_counter + 4;
 
     // FSM states
     localparam IDLE = 2'b00;
@@ -67,6 +68,8 @@ module instruction_memory #(
         end
     end
 
+    wire done = en || first || new_layer_en;
+
     // FSM next state logic - completamente combinatoria
     always @(*) begin
         //first_comb = first;  
@@ -79,12 +82,12 @@ module instruction_memory #(
             
             READ: begin
                 if (read_cnt == 3'd4) begin 
-                    next_state = (en || (first) || new_layer_en) ? DONE : WAIT; //instr_counter -4 != 0 && 
+                    next_state = (done) ? DONE : WAIT;
                 end
             end
             
             WAIT: begin
-                if (en || (first) || new_layer_en) begin //instr_counter -4 != 0 && 
+                if (done) begin
                     next_state = DONE;
                 end
             end
@@ -98,6 +101,8 @@ module instruction_memory #(
             end
         endcase
     end
+
+
 
     // Instruction buffer & control logic
     always @(posedge clk) begin
@@ -121,12 +126,13 @@ module instruction_memory #(
 
                 READ: begin
                     if (read_cnt >= 3'd1 && read_cnt <= 3'd4) begin
-                        case (read_cnt)
+                        /*case (read_cnt)
                             3'd1: instr_parts[63:48] <= bram_out;
                             3'd2: instr_parts[47:32] <= bram_out;
                             3'd3: instr_parts[31:16] <= bram_out;
                             3'd4: instr_parts[15:0]  <= bram_out;
-                        endcase
+                        endcase*/
+                        instr_parts <= {instr_parts[47:0], bram_out};
                     end
                     read_cnt <= read_cnt + 1;
                     addr <= addr + 1;
@@ -139,11 +145,11 @@ module instruction_memory #(
 
                 DONE: begin
                     instruction <= instr_parts;
-                    addr <= (instr_counter + 4 < INSTR_DEPTH) ? 
-                                   instr_counter + 4 : 0;
+                    addr <= (instr_counter_plus_four < INSTR_DEPTH) ? 
+                                   instr_counter_plus_four : 0;
                                    
-                    instr_counter <= (instr_counter + 4 < INSTR_DEPTH) ? 
-                                   instr_counter + 4 : 0;
+                    instr_counter <= (instr_counter_plus_four < INSTR_DEPTH) ? 
+                                   instr_counter_plus_four: 0;
                     first <= 0;
                 end
             endcase

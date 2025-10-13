@@ -67,7 +67,9 @@ module service #(
 	wire      timer_clk;
 	wire      slow_clk;
 	wire gate_snn, gate_serv, gate_general;
-
+    
+    //assign wb_clk = spi_clk;
+  
 	servant_clock_gen #(.SIM(SIM), .DOUBLE_CLOCK(DOUBLE_CLOCK), .DIVR(DIVR), .DIVF(DIVF), .DIVQ(DIVQ), .HFOSC(HFOSC))
 		clock_gen(
 			.i_clk      (i_clk),
@@ -80,7 +82,24 @@ module service #(
 			.bypass		(1'b0),
 			.low_power_mode(gate_general)
 			);
-    
+    /*  
+    clk_gen_wb #(
+        .HFOSC(HFOSC)
+    ) clkgen (
+        .i_clk (i_clk),          
+        .i_rst (i_rst),
+        .o_clk (spi_clk),
+        .o_sclk(slow_clk),
+        .o_rst (wb_rst),
+        .timer_irq           (timer_irq),
+        .i_wb_clkgen_adr     (),
+        .i_wb_clkgen_dat     (),
+        .i_wb_clkgen_we      (),
+        .i_wb_clkgen_cyc     (),
+        .o_wb_clkgen_rdt     (),
+        .o_wb_clkgen_ack     ()
+    );*/
+
 	wire rst;
 	assign rst = wb_rst;
 	

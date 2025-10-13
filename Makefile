@@ -3,11 +3,11 @@ pcf_file = rtl/icebreaker.pcf
 
 env:
 	cd ../ && source oss-cad-suite/environment
-
+	
 build:
 	cd firmware && make -B
-	yosys -p "synth_ice40 -dsp -top service -json output/$(filename).json -blif output/$(filename).blif -noflatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-	nextpnr-ice40 --up5k --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
+	yosys -p "synth_ice40 -abc9 -dsp -top service -json output/$(filename).json -blif output/$(filename).blif -noflatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
+	nextpnr-ice40 --seed 42 --timing-allow-fail --up5k --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
 	icepack output/$(filename).asc output/$(filename).bin -s
 	
 build_stat:
@@ -24,7 +24,7 @@ build_no_flatten:
 
 build_one:
 	cd firmware && make -B
-	yosys -p "synth_ice40 -abc9 -top integrator_new -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/syntzulu/integrator_new.sv -l output/yosys.log
+	yosys -p "synth_ice40 -abc9 -top stack_bram -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/syntzulu/stack_bram.sv rtl/syntzulu/BRAM_singlePort_readFirst.sv -l output/yosys.log
 	#nextpnr-ice40 --up5k --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
 	#icepack output/$(filename).asc output/$(filename).bin -s
 
@@ -40,11 +40,11 @@ prog:
 	
 simulate_sy:
 	#cd firmware && make -B
-	iverilog -g2012 -o rtl_sim  sim/test_tb/tb_PE.v rtl/syntzulu/priority_encoder.sv 
+	iverilog -g2012 -o rtl_sim  sim/test_tb/stack_tb.v rtl/syntzulu/stack_bram.sv rtl/syntzulu/BRAM_singlePort_readFirst.sv rtl/syntzulu/stack.v
 	vvp rtl_sim
 	rm rtl_sim 
-	mv tb_encoder.vcd work/
-	gtkwave --save=work/serv_waves_encoder.gtkw work/tb_encoder.vcd &
+	mv tb_stack.vcd work/
+	gtkwave --save=work/serv_waves_stack.gtkw work/tb_stack.vcd &
 
 simulate:
 	cd firmware && make -B
@@ -56,11 +56,25 @@ simulate:
 
 psimulate: 
 	yosys -p 'read_blif -wideports output/$(filename).blif; write_verilog output/top_syn.v'
-	iverilog -g2012 -o gate_sim rtl/psim.v rtl/define.v sim/tb/servant_tb.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv output/top_syn.v sim/tb/cells_sim.v sim/tb/SB_PLL40_PAD.v sim/tb/SB_PLL40_2F_PAD.v
+	iverilog -g2012 -o gate_sim rtl/psim.v rtl/define.v sim/tb/servant_tb.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv output/top_syn.v sim/tb/cells_sim.v sim/tb/SB_PLL40_PAD.v sim/tb/SB_PLL40_2F_PAD.v sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
 	vvp gate_sim
 	rm gate_sim 
 	mv ps_tb_serv.vcd work/
 	gtkwave --save=work/ps_serv_waves.gtkw work/ps_tb_serv.vcd &
+	
+psimulate_new:
+	yosys -p 'read_json output/$(filename).json; hierarchy -top service; write_verilog -noattr -norename output/top_syn.v'
+	iverilog -g2012 -o gate_sim \
+		rtl/psim.v rtl/define.v \
+		sim/tb/servant_tb.v sim/tb/servant_sim.v \
+		sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v \
+		sim/tb/flash_spi_sim.sv output/top_syn.v \
+		sim/tb/cells_sim.v sim/tb/SB_PLL40_PAD.v sim/tb/SB_PLL40_2F_PAD.v sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
+	vvp gate_sim
+	rm gate_sim
+	mv ps_tb_serv.vcd work/
+	gtkwave --save=work/ps_serv_waves.gtkw work/ps_tb_serv.vcd &
+
 
 listen:
 	sudo rm -f output/serial.txt || true
@@ -77,12 +91,12 @@ create_application:
 	cp $(app)/flash.txt sim/mem/$(app)/; \
 	cp $(app)/encoded_input.txt sim/target/$(app)/; \
 	cp $(app)/snn_inference.txt sim/target/$(app)/; \
-	cp $(app)/spike_1.txt sim/target/$(app)/
+	#cp $(app)/spike_1.txt sim/target/$(app)/
 	mkdir firmware/src/applications/$(app)/
 	cp $(app)/*.h firmware/src/applications/$(app)/
 	cd firmware && make -B compile app=$(app)
 	mkdir flash/src/$(app)/
-	cp $(app)/weights_1.txt $(app)/weights_2.txt $(app)/weights_3.txt $(app)/weights_4.txt $(app)/address.txt $(app)/samples.txt flash/src/$(app)/
+	cp $(app)/weights_1.txt $(app)/weights_2.txt $(app)/weights_3.txt $(app)/weights_4.txt $(app)/address.txt $(app)/samples.txt $(app)/instruction.hex flash/src/$(app)/
 
 clean_application:
 	@if [ -z "$(app)" ]; then \

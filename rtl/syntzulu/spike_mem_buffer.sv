@@ -11,12 +11,13 @@ module spike_mem_buffer (
     input [4:0] next_dim_input_feature,
     input en_L2,
     input output_feature_finish,
-    input last_layer, // to be used in conv mode
+    input last_layer,
     output reg [15:0] spike_mem_in,
     output active_spike,
     output spike_wr_en,
     output [12:0] spike_wr_addr,
     output reg spike_written,
+    output reg spike_written_comb,
     output reg valid_active_group
 );
     wire [2:0] input_buffer;
@@ -161,6 +162,17 @@ module spike_mem_buffer (
             spike_written <= 1;
         else
             spike_written <= 0; 
+    end
+
+    always @(*) begin
+        if(rst)
+            spike_written_comb = 0;
+        else if ((spike_wr_en_d && (spike_addr_d >= SYNAPSES)))
+            spike_written_comb = 1;
+        else if(conv_enable && !dense_enable && spike_wr_en && (spike_wr_addr >= SYNAPSES))
+            spike_written_comb = 1;
+        else
+            spike_written_comb = 0; 
     end
 
     reg [3:0] selected_bits;

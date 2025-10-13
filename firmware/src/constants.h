@@ -2,10 +2,6 @@
 #define CHANNELS 16
 #define TIME 50
 #define INPUT_CHANNELS 32
-#define NEURON_1 100
-#define NEURON_2 256
-#define NEURON_3 288
-#define NEURON_4 12
 
 #define WEIGHT_1_ADDR 1048576
 #define WEIGHT_2_ADDR WEIGHT_1_ADDR+WEIGHT_DEPTH

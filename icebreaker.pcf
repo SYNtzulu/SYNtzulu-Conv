@@ -3,7 +3,7 @@ set_io clk        35
 set_frequency clk 12
 set_io -nowarn rst 20
 
-set_frequency clk      	  24
+#set_frequency clk      	  24
 
 # buttons 
 set_io -nowarn buttons[0] 10

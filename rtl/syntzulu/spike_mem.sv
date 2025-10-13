@@ -23,6 +23,7 @@ module spike_mem #(
     input output_feature_finish,
     input last_layer,
     output spike_written,
+    output spike_written_comb,
     output active_spike,
     output [12:0] spike_wr_addr,
     output [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16,
@@ -101,6 +102,7 @@ module spike_mem #(
         .spike_wr_en(spike_wr_en),
         .spike_wr_addr(spike_wr_addr),
         .spike_written(spike_written),
+        .spike_written_comb(spike_written_comb),
         .valid_active_group(valid_active_group)
     );
 
