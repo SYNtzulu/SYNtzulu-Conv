@@ -52,7 +52,7 @@ module integrator_and_fifo #(
                 stimolo_d <= stimolo;
         end
  
-  // INTEGRATOR
+/*   // INTEGRATOR
     integrator #(
         .WIDTH(WIDTH)
     ) integrator_i (
@@ -71,9 +71,9 @@ module integrator_and_fifo #(
         .spike(spike),
         .output_new(output_new)
     );
-/* 
+*/
         // INTEGRATOR
-    integrator #(
+    integrator_old #(
         .WIDTH(WIDTH)
     ) integrator_i (
         .clk(clk),
@@ -92,7 +92,7 @@ module integrator_and_fifo #(
         .output_new(output_new)
     );
 
-*/
+
     ////////////////////////////
     //  _               ____  //
     // | | ___   __ _  |___ \ //

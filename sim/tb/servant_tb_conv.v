@@ -15,7 +15,7 @@ module servant_tb;
    always  #31 wb_clk <= !wb_clk;
    initial #62 wb_rst <= 1'b0;
 
-   uart_decoder #(57600) uart_decoder (q);
+   uart_decoder #(2000000) uart_decoder (q);
 
    servant_sim
      #(.memfile  (memfile),
@@ -63,7 +63,7 @@ initial begin
   $fclose(f_out_bin);
   $fclose(f_t_bin);
 
-  $display("#[VERIFICATE #%0d  CORRENTI\nERRORI TOTALI: #%0d]", sample_idx, errors_snn_inference);
+  //$display("#[VERIFICATE #%0d  CORRENTI\nERRORI TOTALI: #%0d]", sample_idx, errors_snn_inference);
   $finish;
 end
 

@@ -33,13 +33,13 @@ module servant_sim
 	`endif
    service_i(	.i_clk(wb_clk),
 				.i_rst(wb_rst),
-				.led(q),
+				.led(),
 				.buttons(buttons),
 				.o_flash_ss(SPI_SS),
 				.o_flash_sck(SPI_CLK),
 				.o_flash_mosi(SPI_MOSI),
 				.i_flash_miso(SPI_MISO),
-				.o_txd()
+				.o_txd(q)
 			); // change con service interface
 
    //assign pc_adr = dut.wb_ibus_adr;

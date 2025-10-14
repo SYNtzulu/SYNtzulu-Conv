@@ -16,7 +16,7 @@ module integrator #(parameter WIDTH = 16)(
 );
     localparam P_SIZE = WIDTH + 13;
 
-    reg signed [WIDTH-1:0] r_stimolo[2:0];
+    (* keep = "true" *) reg signed [WIDTH-1:0] r_stimolo[1:0];
     reg signed [WIDTH-1:0] r_threshold [3:0];
     reg [3:0] en_shift;
     reg signed [WIDTH-1:0] comparator_in;
@@ -74,10 +74,10 @@ module integrator #(parameter WIDTH = 16)(
         .SIGNEXTOUT(signed_out)
     );
 
-    wire signed [31:0] stimolo_32;
-    assign stimolo_32 = {{4{r_stimolo[1][15]}}, r_stimolo[1], 12'b0};
+    (* keep = "true" *) wire signed [31:0] stimolo_32;
+    assign stimolo_32 = $signed(r_stimolo[1]) <<< 12;
 
-    wire [15:0] stimolo_c, stimolo_d;
+    (* keep = "true" *) wire [15:0] stimolo_c, stimolo_d;
 
     assign stimolo_c = stimolo_32[31:16]; // Prendi i primi 16 bit
     assign stimolo_d = stimolo_32[15:0]; // Prendi i secondi 16 bit
@@ -87,10 +87,10 @@ module integrator #(parameter WIDTH = 16)(
     always @(posedge clk) begin
         if (rst) begin
             en_shift <= 0;
+            r_stimolo[0] <= 0;
+            r_stimolo[1] <= 0;
             for(i = 0; i < 4; i = i + 1)
                 r_threshold[i] <= 0;
-            for(i = 0; i < 3; i = i + 1)
-                r_stimolo[i] <= 0;
         end else begin
             en_shift[0] <= en;
             r_stimolo[0] <= stimolo;

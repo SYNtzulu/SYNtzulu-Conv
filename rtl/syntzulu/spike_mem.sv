@@ -82,7 +82,9 @@ module spike_mem #(
     wire [15:0] spike_mem_in;
     wire spike_wr_en;
 
-    wire [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16_1, spike_mem_out_16_2;
+    wire [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16_1_bram, spike_mem_out_16_2_bram;
+    reg  [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16_1, spike_mem_out_16_2;
+
     spike_mem_buffer spike_buffer (
         .clk(clk),
         .rst(rst),
@@ -109,7 +111,7 @@ module spike_mem #(
     wire [10:0] spike_wr_addr_shift = spike_wr_addr >> 2;
 
     SB_RAM40_4K spike_mem_1 (
-        .RDATA(spike_mem_out_16_1), 
+        .RDATA(spike_mem_out_16_1_bram), 
         .RADDR(spike_rd_addr_16), 
         .RCLK(clk), 
         .RCLKE(1'b1),
@@ -123,7 +125,7 @@ module spike_mem #(
     );
 
     SB_RAM40_4K spike_mem_2 (
-        .RDATA(spike_mem_out_16_2), 
+        .RDATA(spike_mem_out_16_2_bram), 
         .RADDR(spike_rd_addr_16), 
         .RCLK(clk), 
         .RCLKE(1'b1),
@@ -135,6 +137,16 @@ module spike_mem #(
         .WE(spike_wr_en && spike_wr_en_2_dd),
         .MASK (16'h0000)
     );
+
+    always @(posedge clk) begin
+        if (rst) begin
+            spike_mem_out_16_1 <= 0;
+            spike_mem_out_16_2 <= 0;
+        end else begin
+            spike_mem_out_16_1 <= spike_mem_out_16_1_bram;
+            spike_mem_out_16_2 <= spike_mem_out_16_2_bram;
+        end
+    end
 
     //  The following function calculates the address width based on specified RAM depth
     function integer clogb2;

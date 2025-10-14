@@ -27,11 +27,11 @@ module service #(
     parameter WEIGHTS_FILE_4 = "flash/src/emg/weights_4.txt",
     
 	parameter DOUBLE_CLOCK = 0, // if DOUBLE_CLOCK = 0 clk is generated from HFOSC, allowed freq are 48,24,12,6
-    parameter pClockFrequency = 12_000_000/(DOUBLE_CLOCK+1),
+    parameter pClockFrequency = 24_000_000/(DOUBLE_CLOCK+1),
 	parameter DIVR = 4'b0000,
 	parameter DIVF = 7'b1010100,
 	parameter DIVQ = 3'b110,
-	parameter HFOSC = "0b10", // "0b00" = 48 MHz, "0b01" = 24 MHz, "0b10" = 12 MHz, "0b11" = 6 MHz
+	parameter HFOSC = "0b01", // "0b00" = 48 MHz, "0b01" = 24 MHz, "0b10" = 12 MHz, "0b11" = 6 MHz
 
 	parameter memfile = "firmware/exe.hex",
     parameter memsize =  4096,
@@ -82,7 +82,7 @@ module service #(
 			.bypass		(1'b0),
 			.low_power_mode(gate_general)
 			);
-    /*  
+    /*
     clk_gen_wb #(
         .HFOSC(HFOSC)
     ) clkgen (
@@ -98,7 +98,7 @@ module service #(
         .i_wb_clkgen_cyc     (),
         .o_wb_clkgen_rdt     (),
         .o_wb_clkgen_ack     ()
-    );*/
+    );*/  
 
 	wire rst;
 	assign rst = wb_rst;

@@ -47,7 +47,7 @@ static void send_inference();
 // sample address
 volatile uint32_t sample_addr = 0;
 
-int main(void) {
+int main_old(void) {
 	// enable clocks	
 	DEV_WRITE(CLOCK_GATING, 0);     
 

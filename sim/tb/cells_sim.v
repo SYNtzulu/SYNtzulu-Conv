@@ -2659,7 +2659,7 @@ module SB_SPRAM256KA (
 	endspecify
 `endif
 endmodule
-
+/*
 (* blackbox *)
 module SB_HFOSC(
 	input TRIM0,
@@ -2687,7 +2687,7 @@ module SB_LFOSC(
 	output CLKLF
 );
 endmodule
-
+*/
 (* blackbox *)
 module SB_RGBA_DRV(
 	input CURREN,

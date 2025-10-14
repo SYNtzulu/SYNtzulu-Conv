@@ -15,7 +15,7 @@ module neuron_lp#(
     input first_input_feature,
     input last_input_feature,
     input new_inference_start,
-    input [2*(WEIGHTS+1)-1:0] synaptic_current,
+    input [2*(WEIGHTS)-1:0] synaptic_current,
     input [clogb2(MAX_DECAY-1)-1:0] current_decay, voltage_decay,
     input detection,
     input [WIDTH-1:0] threshold,

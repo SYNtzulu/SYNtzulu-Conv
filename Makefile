@@ -1,4 +1,4 @@
-filename = Syntzulu
+filename = top
 pcf_file = rtl/icebreaker.pcf
 
 env:
@@ -6,8 +6,8 @@ env:
 	
 build:
 	cd firmware && make -B
-	yosys -p "synth_ice40 -abc9 -dsp -top service -json output/$(filename).json -blif output/$(filename).blif -noflatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-	nextpnr-ice40 --seed 42 --timing-allow-fail --up5k --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
+	yosys -p "synth_ice40 -abc9 -dsp -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
+	nextpnr-ice40 --up5k --seed 99 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
 	icepack output/$(filename).asc output/$(filename).bin -s
 	
 build_stat:
@@ -17,6 +17,43 @@ build_stat:
 	          synth_ice40 -top service -dsp -abc9 -noflatten; \
 	          tee -o output/module_stats.txt stat" \
 	     -l output/yosys_stat.log
+
+# Lista di seed da testare (modifica liberamente)
+SEEDS = 1 2 3 4 5 6 7 8 9 10 42 99
+
+build_best:
+	@echo "=== ⚡ Ricerca veloce del miglior seed (Yosys una sola volta) ==="
+	@rm -f output/nextpnr_results.txt
+
+	@# Esegui Yosys una sola volta
+	@echo "▶️  Sintesi con Yosys..."
+	yosys -p "synth_ice40 -abc9 -dsp -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" \
+	      rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
+
+	@# Ciclo per provare diversi seed
+	@for s in $(SEEDS); do \
+		echo "▶️  Place & Route con seed $$s..."; \
+		nextpnr-ice40 --up5k --json output/$(filename).json --pcf $(pcf_file) \
+		              --asc output/$(filename)_$$s.asc --seed $$s -l output/nextpnr_$$s.log; \
+		icepack output/$(filename)_$$s.asc output/$(filename)_$$s.bin -s; \
+		FREQ=$$(grep "Max frequency" output/nextpnr_$$s.log | tail -1 | awk '{print $$NF}'); \
+		if [ -n "$$FREQ" ]; then \
+			echo "$$s $$FREQ" >> output/nextpnr_results.txt; \
+			echo "✅ Seed $$s → $$FREQ MHz"; \
+		else \
+			echo "⚠️  Seed $$s → nessuna frequenza trovata"; \
+		fi; \
+	done
+
+	@echo ""
+	@echo "=== 📊 Risultati sintetici ==="
+	@sort -nr -k2 output/nextpnr_results.txt | tee output/nextpnr_sorted.txt
+	@BEST_SEED=$$(sort -nr -k2 output/nextpnr_results.txt | head -1 | awk '{print $$1}'); \
+	 BEST_FREQ=$$(sort -nr -k2 output/nextpnr_results.txt | head -1 | awk '{print $$2}'); \
+	 echo ""; \
+	 echo "🌟 Miglior seed: $$BEST_SEED con $$BEST_FREQ MHz"; \
+	 echo "📦 File binario: output/$(filename)_$$BEST_SEED.bin"
+
 
 build_no_flatten:
 	cd firmware && make -B
@@ -48,7 +85,7 @@ simulate_sy:
 
 simulate:
 	cd firmware && make -B
-	iverilog -o rtl_sim  rtl/define.v sim/tb/servant_tb_conv.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/primitive/*
+	iverilog -o rtl_sim  rtl/define.v sim/tb/servant_tb_conv.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/primitive/* sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
 	vvp rtl_sim
 	rm rtl_sim 
 	mv tb_serv.vcd work/
@@ -66,10 +103,10 @@ psimulate_new:
 	yosys -p 'read_json output/$(filename).json; hierarchy -top service; write_verilog -noattr -norename output/top_syn.v'
 	iverilog -g2012 -o gate_sim \
 		rtl/psim.v rtl/define.v \
-		sim/tb/servant_tb.v sim/tb/servant_sim.v \
+		sim/tb/servant_tb_conv.v sim/tb/servant_sim.v \
 		sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v \
 		sim/tb/flash_spi_sim.sv output/top_syn.v \
-		sim/tb/cells_sim.v sim/tb/SB_PLL40_PAD.v sim/tb/SB_PLL40_2F_PAD.v sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
+		sim/tb/cells_sim.v sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
 	vvp gate_sim
 	rm gate_sim
 	mv ps_tb_serv.vcd work/
@@ -78,7 +115,7 @@ psimulate_new:
 
 listen:
 	sudo rm -f output/serial.txt || true
-	sudo minicom -b 4000000 -H -C output/serial.txt -D /dev/ttyUSB1
+	sudo minicom -b 4000000 -H -C output/serial.txt -D /dev/ttyUSB2
 
 create_application:
 	@if [ -z "$(app)" ]; then \

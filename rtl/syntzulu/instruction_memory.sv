@@ -10,7 +10,8 @@ module instruction_memory #(
     input en,
     output reg [INSTR_WIDTH-1:0] instruction
 );
-    wire  [15:0] bram_out;
+    wire  [15:0] bram_out_data;
+    reg [15:0] bram_out;
 
     reg [63:0] instr_parts;
     reg [2:0]  read_cnt;
@@ -36,7 +37,7 @@ module instruction_memory #(
     SB_RAM40_4K #(
         .INIT_FILE("rtl/instruction.hex")
     )bram (
-        .RDATA(bram_out), 
+        .RDATA(bram_out_data), 
         .RADDR(addr), 
         .RCLK(clk), 
         .RCLKE(1'b1),
@@ -48,6 +49,14 @@ module instruction_memory #(
         .WE(1'b0),
         .MASK (16'h0000)
     );
+
+    always @(posedge clk) begin
+        if (rst) begin
+            bram_out <= 0;
+        end else begin
+            bram_out <= bram_out_data;
+        end
+    end
 
     // FSM transition
     always @(posedge clk) begin
