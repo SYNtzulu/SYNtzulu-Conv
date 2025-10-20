@@ -463,6 +463,7 @@ wire [3:0] dim_output_feature;
 
 assign conv_enable = (layer_type == 2'b01) ? 1 : 0;
 assign dense_enable = (layer_type == 2'b00) ? 1 : 0;
+assign polling_enable = (layer_type == 2'b10) ? 1 : 0;
 
 always @(posedge clk)
     if (rst)

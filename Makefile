@@ -4,10 +4,13 @@ pcf_file = rtl/icebreaker.pcf
 env:
 	cd ../ && source oss-cad-suite/environment
 	
+netlist:
+	yosys -p 'read_blif -wideports output/$(filename).blif; write_verilog output/top_syn.v'
+	
 build:
 	cd firmware && make -B
-	yosys -p "synth_ice40 -abc9 -dsp -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-	nextpnr-ice40 --up5k --seed 99 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
+	yosys -p "synth_ice40 -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
+	nextpnr-ice40 --up5k --seed 9 --placer heap --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
 	icepack output/$(filename).asc output/$(filename).bin -s
 	
 build_stat:
@@ -27,13 +30,13 @@ build_best:
 
 	@# Esegui Yosys una sola volta
 	@echo "▶️  Sintesi con Yosys..."
-	yosys -p "synth_ice40 -abc9 -dsp -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" \
+	yosys -p "synth_ice40 -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" \
 	      rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
 
 	@# Ciclo per provare diversi seed
 	@for s in $(SEEDS); do \
 		echo "▶️  Place & Route con seed $$s..."; \
-		nextpnr-ice40 --up5k --json output/$(filename).json --pcf $(pcf_file) \
+		nextpnr-ice40 --up5k --placer heap --json output/$(filename).json --pcf $(pcf_file) \
 		              --asc output/$(filename)_$$s.asc --seed $$s -l output/nextpnr_$$s.log; \
 		icepack output/$(filename)_$$s.asc output/$(filename)_$$s.bin -s; \
 		FREQ=$$(grep "Max frequency" output/nextpnr_$$s.log | tail -1 | awk '{print $$NF}'); \
@@ -115,7 +118,7 @@ psimulate_new:
 
 listen:
 	sudo rm -f output/serial.txt || true
-	sudo minicom -b 4000000 -H -C output/serial.txt -D /dev/ttyUSB2
+	sudo minicom -b 4000000 -H -C output/serial.txt -D /dev/ttyUSB1
 
 create_application:
 	@if [ -z "$(app)" ]; then \

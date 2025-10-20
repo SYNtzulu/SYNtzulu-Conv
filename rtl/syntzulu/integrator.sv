@@ -21,6 +21,7 @@ module integrator #(parameter WIDTH = 16)(
     reg [3:0] en_shift;
     reg signed [WIDTH-1:0] comparator_in;
     wire signed [31:0] mult_out;
+    wire signed_out;
 
     wire signed [15:0] mac_a = output_old[15:0]; // tronca a 16 bit
     wire signed [15:0] mac_b = conv_enable ? (first_input_feature ? { {2{decay[13]}}, decay } : 4096) : { {2{decay[13]}}, decay }; 
@@ -82,6 +83,9 @@ module integrator #(parameter WIDTH = 16)(
     assign stimolo_c = stimolo_32[31:16]; // Prendi i primi 16 bit
     assign stimolo_d = stimolo_32[15:0]; // Prendi i secondi 16 bit
     reg [P_SIZE-1:0] supporto_1;
+    wire signed_result_negative = mac_a[15] ^ mac_b[15];
+
+    reg r_signed_out [2:0];
     // Pipeline
     integer i;
     always @(posedge clk) begin
@@ -91,21 +95,26 @@ module integrator #(parameter WIDTH = 16)(
             r_stimolo[1] <= 0;
             for(i = 0; i < 4; i = i + 1)
                 r_threshold[i] <= 0;
+            for(i = 0; i < 3; i = i + 1)
+                r_signed_out[i] <= 0;
         end else begin
             en_shift[0] <= en;
             r_stimolo[0] <= stimolo;
             r_threshold[0] <= threshold;
+            r_signed_out[0] <= signed_result_negative;
 
             en_shift[1] <= en_shift[0];
             r_stimolo[1] <= r_stimolo[0];
             r_threshold[1] <= r_threshold[0];
+            r_signed_out[1] <= r_signed_out[0]; 
 
             en_shift[2] <= en_shift[1];
             r_threshold[2] <= r_threshold[1];
+            r_signed_out[2] <= r_signed_out[1]; 
 
             en_shift[3] <= en_shift[2];
             r_threshold[3] <= r_threshold[2];
-            if(signed_out)begin
+            if(r_signed_out[2])begin
                 supporto_1 = ~mult_out+1'b1;
                 comparator_in <= ~supporto_1[P_SIZE-1:12]+1'b1;
             end
