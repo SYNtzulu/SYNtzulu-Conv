@@ -1,42 +1,41 @@
 module instruction_memory #(
-    parameter RAM_WIDTH = 16,
-    parameter INSTR_WIDTH = 64,
-    parameter INSTR_DEPTH = 16,
-    parameter INSTR_FILE = "/home/federico/Documents/syntzulu_new/rtl/instruction.hex"
+    parameter RAM_WIDTH    = 16,
+    parameter INSTR_WIDTH  = 80,  // <-- da 64 a 80
+    parameter INSTR_DEPTH  = 16,
+    parameter INSTR_FILE   = "flash/src/emg/instruction.hex"
 )(
-    input clk,
-    input rst,
-    input new_inference_start,
-    input en,
+    input  clk,
+    input  rst,
+    input  new_inference_start,
+    input  en,
     output reg [INSTR_WIDTH-1:0] instruction
 );
-    wire  [15:0] bram_out_data;
-    reg [15:0] bram_out;
 
-    reg [63:0] instr_parts;
-    reg [2:0]  read_cnt;
+    wire [15:0] bram_out_data;
+    reg  [15:0] bram_out;
+
+    reg  [INSTR_WIDTH-1:0] instr_parts;
+    reg  [2:0] read_cnt;
 
     localparam ADDR_WIDTH = clogb2(INSTR_DEPTH-1);
     reg [ADDR_WIDTH-1:0] addr;
     reg [ADDR_WIDTH-1:0] instr_counter;
-    wire [ADDR_WIDTH-1:0] instr_counter_plus_four = instr_counter + 4;
+    wire [ADDR_WIDTH-1:0] instr_counter_plus_five = instr_counter + 5;
 
     // FSM states
     localparam IDLE = 2'b00;
     localparam READ = 2'b01;
     localparam WAIT = 2'b10;
     localparam DONE = 2'b11;
-    
+
     reg [1:0] state, next_state;
     reg new_layer_en;
     reg first;
-    //reg first_comb;  
 
-    //assign read_en = (state == READ);
-
+    // BRAM 16-bit wide
     SB_RAM40_4K #(
-        .INIT_FILE("rtl/instruction.hex")
-    )bram (
+        .INIT_FILE(INSTR_FILE)
+    ) bram (
         .RDATA(bram_out_data), 
         .RADDR(addr), 
         .RCLK(clk), 
@@ -47,125 +46,85 @@ module instruction_memory #(
         .WCLKE(1'b1),
         .WDATA(1'b0), 
         .WE(1'b0),
-        .MASK (16'h0000)
+        .MASK(16'h0000)
     );
 
-    always @(posedge clk) begin
-        if (rst) begin
-            bram_out <= 0;
-        end else begin
-            bram_out <= bram_out_data;
-        end
-    end
+    always @(posedge clk)
+        if (rst) bram_out <= 0;
+        else     bram_out <= bram_out_data;
 
     // FSM transition
-    always @(posedge clk) begin
-        if (rst) begin
-            state <= IDLE;
-        end else begin
-            state <= next_state;
-        end
-    end
+    always @(posedge clk)
+        if (rst) state <= IDLE;
+        else     state <= next_state;
 
     always @(posedge clk) begin
-        if (rst) begin
+        if (rst)
             new_layer_en <= 0;
-        end else if(en) begin
-            new_layer_en      <= 1;
-        end else if (state == DONE) begin
+        else if (en)
+            new_layer_en <= 1;
+        else if (state == DONE)
             new_layer_en <= 0;
-        end
     end
 
     wire done = en || first || new_layer_en;
 
-    // FSM next state logic - completamente combinatoria
+    // FSM combinatorial next state
     always @(*) begin
-        //first_comb = first;  
-        next_state = state;  
-        
+        next_state = state;
         case (state)
-            IDLE: begin
-                next_state = READ ;
-            end
-            
-            READ: begin
-                if (read_cnt == 3'd4) begin 
-                    next_state = (done) ? DONE : WAIT;
-                end
-            end
-            
-            WAIT: begin
-                if (done) begin
-                    next_state = DONE;
-                end
-            end
-            
-            DONE: begin
-                next_state = IDLE;
-            end
-            
-            default: begin
-                next_state = READ;
-            end
+            IDLE: next_state = READ;
+            READ: if (read_cnt == 3'd5)
+                      next_state = (done) ? DONE : WAIT;
+            WAIT: if (done)
+                      next_state = DONE;
+            DONE: next_state = IDLE;
+            default: next_state = READ;
         endcase
     end
 
-
-
-    // Instruction buffer & control logic
+    // Instruction assembly
     always @(posedge clk) begin
         if (rst) begin
             read_cnt      <= 0;
             addr          <= 0;
             instr_counter <= 0;
-            first <= 1;
-            
-            // Reset dell'array instr_parts
-            for (integer i = 0; i < 4; i = i + 1) begin
-                instr_parts[i] <= 0;
-            end
+            first         <= 1;
+            instr_parts   <= 0;
         end else begin
-
             case (state)
                 IDLE: begin
                     read_cnt <= 0;
-                    addr     <= instr_counter+1;
+                    addr     <= instr_counter + 1;
                 end
 
                 READ: begin
-                    if (read_cnt >= 3'd1 && read_cnt <= 3'd4) begin
-                        /*case (read_cnt)
-                            3'd1: instr_parts[63:48] <= bram_out;
-                            3'd2: instr_parts[47:32] <= bram_out;
-                            3'd3: instr_parts[31:16] <= bram_out;
-                            3'd4: instr_parts[15:0]  <= bram_out;
-                        endcase*/
-                        instr_parts <= {instr_parts[47:0], bram_out};
+                    if (read_cnt >= 3'd1 && read_cnt <= 3'd5) begin
+                        // shift left 16 bit e aggiungi la nuova parola
+                        instr_parts <= {instr_parts[INSTR_WIDTH-17:0], bram_out};
                     end
                     read_cnt <= read_cnt + 1;
-                    addr <= addr + 1;
+                    addr     <= addr + 1;
                 end
 
                 WAIT: begin
-                    first <= 0;  // Non è più il primo ciclo
-                    // Nessuna operazione, solo attesa
+                    first <= 0;
                 end
 
                 DONE: begin
                     instruction <= instr_parts;
-                    addr <= (instr_counter_plus_four < INSTR_DEPTH) ? 
-                                   instr_counter_plus_four : 0;
-                                   
-                    instr_counter <= (instr_counter_plus_four < INSTR_DEPTH) ? 
-                                   instr_counter_plus_four: 0;
+                    addr <= (instr_counter_plus_five < INSTR_DEPTH) ?
+                              instr_counter_plus_five : 0;
+
+                    instr_counter <= (instr_counter_plus_five < INSTR_DEPTH) ?
+                              instr_counter_plus_five : 0;
                     first <= 0;
                 end
             endcase
         end
     end
 
-    // Utility function per calcolare la larghezza dell'indirizzo
+    // Utility function
     function integer clogb2;
         input integer depth;
         begin

@@ -20,12 +20,12 @@ module Syntzulu
     parameter MAX_THRESHOLD = 65536,
 
     parameter INSTR_WIDTH = 64,
-    parameter INSTR_FILE = "/home/federico/Documents/syntzulu_new/rtl/instruction.hex",
+    parameter INSTR_FILE = "",
 
-    parameter WEIGHTS_FILE_1 = "/home/federico/Documents/syntzulu_new/rtl/weights_1.hex",
-    parameter WEIGHTS_FILE_2 = "/home/federico/Documents/syntzulu_new/rtl/weights_2.hex",
-    parameter WEIGHTS_FILE_3 = "/home/federico/Documents/syntzulu_new/rtl/weights_3.hex",
-    parameter WEIGHTS_FILE_4 = "/home/federico/Documents/syntzulu_new/rtl/weights_4.hex",
+    parameter WEIGHTS_FILE_1 = "",
+    parameter WEIGHTS_FILE_2 = "",
+    parameter WEIGHTS_FILE_3 = "",
+    parameter WEIGHTS_FILE_4 = "",
     
     parameter WEIGHT_DEPTH_12 = 8192,
     parameter WEIGHT_DEPTH_34 = 8192

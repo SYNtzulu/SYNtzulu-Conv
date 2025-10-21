@@ -1,6 +1,7 @@
 module lif_pipe (
     input clk,
     input rst,
+    input polling_enable,
     input detection,
     input first_input_feature,
     input last_input_feature,
@@ -36,7 +37,7 @@ module lif_pipe (
 
     assign detection_out = pipe_detection[9];
     assign first_input_feature_out = pipe_first_input_feature[5];
-    assign last_input_feature_out = pipe_last_input_feature[9];
-    assign en_L2_out = pipe_en_L2[9];
+    assign last_input_feature_out = polling_enable ? pipe_last_input_feature[0] : pipe_last_input_feature[9];
+    assign en_L2_out = polling_enable ? pipe_en_L2[0] : pipe_en_L2[9];
 
 endmodule

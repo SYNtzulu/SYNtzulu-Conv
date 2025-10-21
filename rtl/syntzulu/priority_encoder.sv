@@ -5,12 +5,15 @@ module priority_encoder #(
 	input en,
 	input rst,
 	input conv_enable,
+	input polling_enable,
 	input [MAX_KERNEL*MAX_KERNEL-1:0] kernel_in,
 	input input_feature_ready,
 	input weights_buffer_ready,
 	output reg conv_en,
 	output wire [15:0] spike_address,
     output PE_finish_pulse,
+	output polling_spike,
+	output valid_polling_spike,
 	output last_spike
 );  	
 	// Mappatura della matrice 3x3 in colonne
@@ -52,12 +55,24 @@ module priority_encoder #(
 				end
 		end
 
+	reg en_d;
+	always @(posedge clk)
+		if(rst)
+			en_d <= 0;
+		else
+			en_d <= en;
+
 	wire [3:0] active_spike;
 	assign active_spike = C0+C1+C2;
 	wire PE_finish;
-	assign PE_finish = (conv_enable && PE_active && kernel==0) ? 1 : 0; 
+	assign PE_finish = polling_enable ? en_d : (conv_enable && PE_active && kernel==0) ? 1 : 0; 
 
 	assign last_spike = active_spike <= 4 ? 1 : 0;
+
+	wire active_spike_maior_zero = active_spike > 0;
+
+	assign polling_spike = (polling_enable && PE_active) ? active_spike_maior_zero : 0;
+	assign valid_polling_spike = en_d;
 
 	always @(posedge clk) begin
 		if (rst)
@@ -187,9 +202,7 @@ module encoder_system(
     output [3:0] spike_address_PE3, spike_address_PE2, spike_address_PE1, spike_address_PE0
 );
 
-    // -------------------------
-    // Calcolo rank (quanti PE prima hanno scelto la stessa colonna)
-    // -------------------------
+    // Calcolo rank
     wire [1:0] rank0;
     wire [1:0] rank1;
     wire [1:0] rank2;
@@ -203,60 +216,51 @@ module encoder_system(
                    ((sel[7:6] == sel[3:2]) ? 2'd1 : 2'd0) +
                    ((sel[7:6] == sel[5:4]) ? 2'd1 : 2'd0);
 
-    // -------------------------
-    // Funzioni di supporto
-    // -------------------------
-
     function [1:0] first_one;
-        input [2:0] r;
+        input [2:0] rank;
         begin
-            if (r[0]) first_one = 2'd0;
-            else if (r[1]) first_one = 2'd1;
-            else if (r[2]) first_one = 2'd2;
+            if (rank[0]) first_one = 2'd0;
+            else if (rank[1]) first_one = 2'd1;
+            else if (rank[2]) first_one = 2'd2;
             else first_one = 2'd3; // nessuna
         end
     endfunction
 
     function [2:0] clear_first;
-        input [2:0] r;
+        input [2:0] rank;
         begin
-            if (r[0]) clear_first = r & 3'b110;
-            else if (r[1]) clear_first = r & 3'b101;
-            else if (r[2]) clear_first = r & 3'b011;
-            else clear_first = r;
+            if (rank[0]) clear_first = rank & 3'b110;
+            else if (rank[1]) clear_first = rank & 3'b101;
+            else if (rank[2]) clear_first = rank & 3'b011;
+            else clear_first = rank;
         end
     endfunction
 
-    function [1:0] kth_one;
-        input [2:0] r;
+    function [1:0] choose_spike;
+        input [2:0] rank;
         input [1:0] k;
         reg [2:0] t;
         begin
-            t = r;
+            t = rank;
             if (k == 2'd0) begin
-                kth_one = first_one(t);
+                choose_spike = first_one(t);
             end else if (k == 2'd1) begin
                 t = clear_first(t);
-                kth_one = first_one(t);
+                choose_spike = first_one(t);
             end else begin
                 t = clear_first(t);
                 t = clear_first(t);
-                kth_one = first_one(t);
+                choose_spike = first_one(t);
             end
         end
     endfunction
 
-    // -------------------------
-    // Riga selezionata per ciascun PE
-    // -------------------------
-    wire [1:0] spike_address_row_PE0 = kth_one(R_PE0, rank0);
-    wire [1:0] spike_address_row_PE1 = kth_one(R_PE1, rank1);
-    wire [1:0] spike_address_row_PE2 = kth_one(R_PE2, rank2);
-    wire [1:0] spike_address_row_PE3 = kth_one(R_PE3, rank3);
+    wire [1:0] spike_address_row_PE0 = choose_spike(R_PE0, rank0);
+    wire [1:0] spike_address_row_PE1 = choose_spike(R_PE1, rank1);
+    wire [1:0] spike_address_row_PE2 = choose_spike(R_PE2, rank2);
+    wire [1:0] spike_address_row_PE3 = choose_spike(R_PE3, rank3);
 
-    // -------------------------
-    // Composizione indirizzo (row+col)
-    // -------------------------
+    // Composizione indirizzo (row,col)
     wire [3:0] temp_PE0 = {spike_address_row_PE0, sel[1:0]};
     wire [3:0] temp_PE1 = {spike_address_row_PE1, sel[3:2]};
     wire [3:0] temp_PE2 = {spike_address_row_PE2, sel[5:4]};

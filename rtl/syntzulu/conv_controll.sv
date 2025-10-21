@@ -10,13 +10,14 @@ module conv_controll #(
     input rst,
     input [1:0] stride,
     input conv_enable,
+    input polling_enable,
 
     input [clogb2(MAX_KERNEL)-1:0] dim_kernel,
     input [clogb2(MAX_INPUT_FEATURE)-1:0] dim_input_feature,
     input [clogb2(MAX_NUMBER_INPUT_FEATURE):0] number_input_feature,
     input [clogb2(MAX_NUMBER_OUTPUT_FEATURE):0] number_output_feature,
 
-    input [MAX_INPUT_FEATURE-1:0] input_feature_row, //righa dell'input feature letta dalla spike_mem
+    input [MAX_INPUT_FEATURE-1:0] input_feature_row, //riga dell'input feature letta dalla spike_mem
     input [clogb2(WEIGHT_DEPTH)-1:0]base_address_weights,
     input weights_buffer_ready,
     input spike_written,
@@ -37,11 +38,13 @@ module conv_controll #(
     output last_output_feature,
     output [12:0] spike_mem_rd_addr,
 	output conv_en,
-    output last_spike
+    output last_spike,
+    output polling_spike,
+    output valid_polling_spike
 );
     wire convolution_enable;
 
-    assign convolution_enable = en && conv_enable && !convolution_finish; //segnale che mi dice che la convoluzione è abilitata
+    assign convolution_enable = ((en && conv_enable) ||polling_enable) && !convolution_finish ; //segnale che mi dice che la convoluzione è abilitata
     wire [MAX_KERNEL*MAX_KERNEL-1:0] output_kernel;
     reg new_conv; 
 
@@ -82,8 +85,8 @@ module conv_controll #(
 
     always @(posedge clk) begin
         if (rst) begin
-            weight_rd_addr <= '0;
-            count_weights  <= '0;
+            weight_rd_addr <= 1'b0;
+            count_weights  <= 1'b0;
             write_en_weight_buffer <= 1'b0;
         end else if (convolution_enable && !conv_finish) begin
             if (!convolution_enable_d) begin
@@ -210,7 +213,8 @@ module conv_controll #(
         end
     end
 
-    assign en_PE = (new_kernel_d && !write_en_weight_buffer) || (weights_buffer_ready && !weights_buffer_ready_d); //impulso di un ciclo
+    assign en_PE = polling_enable ? ((input_feature_ready && !input_feature_ready_d) || new_kernel_d && input_feature_ready) : 
+            (new_kernel_d && !write_en_weight_buffer) || (weights_buffer_ready && !weights_buffer_ready_d) ; //impulso di un ciclo
 
     always @(posedge clk) begin
         if (rst) begin
@@ -314,12 +318,15 @@ module conv_controll #(
         .rst(rst),
         .en(en_PE && !convolution_finish),
         .conv_enable(convolution_enable),
+        .polling_enable(polling_enable),
         .input_feature_ready(input_feature_ready_d),
         .weights_buffer_ready(weights_buffer_ready),
         .kernel_in(output_kernel),
         .conv_en(conv_en),
         .spike_address(spike_address),
         .PE_finish_pulse(new_kernel),
+        .polling_spike(polling_spike),
+        .valid_polling_spike(valid_polling_spike),
         .last_spike(last_spike)
     );
 

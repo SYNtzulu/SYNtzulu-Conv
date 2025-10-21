@@ -48,6 +48,7 @@ module layer_lp
     //input valid_spike_conv,
     input conv_enable,
     input dense_enable,
+    input polling_spike_enable,
     input first_input_feature,
     input last_input_feature,
 
@@ -217,6 +218,7 @@ module layer_lp
         .new_inference_start(new_inference_start),
         .conv_enable(conv_enable),
         .dense_enable(dense_enable),
+        .polling_spike_enable(polling_spike_enable),
         .first_input_feature(first_input_feature), 
         .last_input_feature(last_input_feature),
         .synaptic_current(stimulus),

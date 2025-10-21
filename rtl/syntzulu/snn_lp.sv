@@ -16,8 +16,8 @@ module snn_lp
 	parameter MAX_NUMBER_INPUT_FEATURE = 32,
 	parameter MAX_NUMBER_OUTPUT_FEATURE = 32,
 
-    parameter INSTR_WIDTH = 64,
-    parameter INSTR_FILE = "/home/federico/Documents/syntzulu_new/rtl/instruction.hex",
+    parameter INSTR_WIDTH = 80,
+    parameter INSTR_FILE = "/home/sambu/Documents/syntzulu_new/flash/src/instruction.hex",
 
     parameter WEIGHTS_FILE_1 = "/home/sambu/Documents/syntzulu_new/flash/src/weights_1.txt",
     parameter WEIGHTS_FILE_2 = "/home/sambu/Documents/syntzulu_new/flash/src/weights_2.txt",
@@ -105,7 +105,7 @@ always @(posedge clk)
 
 assign start_instruction =  (input_buffer_valid) && !input_buffer_valid_d;
 
-localparam INSTR_DEPTH = (LAYERS * 4);
+localparam INSTR_DEPTH = (LAYERS * INSTR_WIDTH/16);
 
 instruction_memory #(
     .INSTR_WIDTH(INSTR_WIDTH),
@@ -154,7 +154,8 @@ instruction_decoder #(
     .stride(stride),
     .kernel_size(kernel_size),
     .dense_next(dense_next),
-    .SYNAPSES (SYNAPSES_instr)
+    .SYNAPSES (SYNAPSES_instr),
+    .square_dim_output_feature(NEURON_CONV)
     );
 
 /*
@@ -194,6 +195,7 @@ assign first_input_feature_computed = conv_enable ? first_input_feature_out : 0;
 lif_pipe lif_pipe_i (
     .clk(clk),
     .rst(rst),
+    .polling_enable(polling_enable),
     .detection(spike_check),
     .first_input_feature(first_input_feature),
     .last_input_feature(last_input_feature),
@@ -204,7 +206,7 @@ lif_pipe lif_pipe_i (
     .en_L2_out(en_L2_out)
 );
 
-assign detection_computed = conv_enable ? detection_out_pipe : spike_check;
+assign detection_computed = conv_enable ? (polling_enable ? 0 : detection_out_pipe) : spike_check;
 
 layer_lp
     #(
@@ -248,11 +250,12 @@ layer_lp_l1_i
     .en_conv(conv_en && last_spike),
 
     .spike_out(s1),
-    .integrated_neuron(integrated_neuron_1),
+    .integrated_neuron(integrated_neuron_1_layer),
     .neuron_lp_voltage(voltage_1),
 
     .conv_enable(conv_enable),
     .dense_enable(dense_enable),
+    .polling_spike_enable(polling_enable && polling_spike),
     .first_input_feature(first_input_feature_computed), 
     .last_input_feature(last_input_feature_out),
 
@@ -326,10 +329,11 @@ layer_lp_l2_i
     
     .spike_out(s2),
     .neuron_lp_voltage(voltage_2),
-	.integrated_neuron(integrated_neuron_2),
+	.integrated_neuron(integrated_neuron_2_layer),
 
     .conv_enable(conv_enable),
     .dense_enable(dense_enable),
+    .polling_spike_enable(polling_enable && polling_spike),
     .first_input_feature(first_input_feature_computed), 
     .last_input_feature(last_input_feature_out),
     
@@ -352,6 +356,11 @@ assign convolution_pipe_full = convolution_pipe_full_L1 || convolution_pipe_full
 
 wire valid12; 
 assign valid12 = valid_spike_1 && valid_spike_2;
+
+wire integrated_neuron_1_layer, integrated_neuron_2_layer;
+
+assign integrated_neuron_1 = polling_enable ? valid_polling_spike : integrated_neuron_1_layer;
+assign integrated_neuron_2 = polling_enable ? valid_polling_spike : integrated_neuron_2_layer;
 
 /////////////////////////////////////////////////
 //    ____                  _                  //
@@ -460,8 +469,10 @@ wire output_feature_finish;
 wire [clogb2(SPIKE_MEM_DEPTH)-1 : 0] spike_mem_rd_addr_conv;
 wire conv_en;
 wire [3:0] dim_output_feature;
+wire polling_spike;
+wire valid_polling_spike;
 
-assign conv_enable = (layer_type == 2'b01) ? 1 : 0;
+assign conv_enable = !dense_enable;
 assign dense_enable = (layer_type == 2'b00) ? 1 : 0;
 assign polling_enable = (layer_type == 2'b10) ? 1 : 0;
 
@@ -485,6 +496,7 @@ conv_controll #(
     .rst(rst),
     .en(en_conv),
     .conv_enable(conv_enable),
+    .polling_enable(polling_enable),
     .stride(stride),
     
     .dim_input_feature(size_input_feature),
@@ -512,7 +524,9 @@ conv_controll #(
     .last_input_feature(last_input_feature),
     .spike_mem_rd_addr(spike_mem_rd_addr_conv),
     .conv_en(conv_en),
-    .last_spike(last_spike)
+    .last_spike(last_spike),
+    .polling_spike(polling_spike),
+    .valid_polling_spike(valid_polling_spike)
 );
 
 //////////////////////////////////////////////////
@@ -539,9 +553,9 @@ reg layer_enable, layer_enable_d, layer_enable_dd;
 always @(posedge clk) begin
     if (rst)
         layer_enable <= 1'b0;
-    else if (en_conv || stream_out_1 || stream_out_2)
+    else if (((en_conv && !polling_enable) || stream_out_1 || stream_out_2))
         layer_enable <= 1'b1;
-    else if (convolution_finish || (stream_out_done && (neuron_cnt == NEURON)))
+    else if (convolution_finish || (stream_out_done && (neuron_cnt == NEURON))) 
         layer_enable <= 1'b0;
 end 
 
@@ -590,7 +604,7 @@ assign integrated_neuron = integrated_neuron_1; // integrated_neuron 1 and 2 are
 // Integrated neurons counter
 
 wire [clogb2(MAX_INPUT_FEATURE*MAX_INPUT_FEATURE)-1:0] NEURON_CONV;
-
+/*
 // Istanziazione del blocco DSP
     SB_MAC16 #(
         .TOPOUTPUT_SELECT(2'b11),
@@ -612,7 +626,7 @@ wire [clogb2(MAX_INPUT_FEATURE*MAX_INPUT_FEATURE)-1:0] NEURON_CONV;
 
 wire[31:0] square_dim_output_feature;
 assign NEURON_CONV = square_dim_output_feature[7:0] - 1;
-
+*/
 reg [clogb2(MAX_NEURONS/2-1)-1:0] integrated_neurons_cnt; 
 wire [7:0] neuron_limit = dense_enable ? NEURON : NEURON_CONV;
 wire next_reset_cond     = conv_enable && !last_input_feature_out;

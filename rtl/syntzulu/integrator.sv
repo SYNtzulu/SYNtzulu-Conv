@@ -3,6 +3,7 @@
 module integrator #(parameter WIDTH = 16)(
     input clk, rst, en, detection,
     input conv_enable,
+    input polling_spike_enable,
     input first_input_feature,
     input [WIDTH-1:0] output_old,
     input [13:0] decay,
@@ -123,7 +124,7 @@ module integrator #(parameter WIDTH = 16)(
         end
     end
 
-    assign spike = (comparator_in >= r_threshold[3]) & detection;
+    assign spike = polling_spike_enable ? 1 :((comparator_in >= r_threshold[3]) & detection);
     assign output_new = spike ? 0 : comparator_in;
     assign valid_fifo = en_shift[3];
     assign valid = en_shift[3] && detection;

@@ -18,8 +18,8 @@ module service #(
     parameter MAX_DECAY = 4096,
     parameter MAX_THRESHOLD = 65536,
 
-    parameter INSTR_WIDTH = 64,
-    parameter INSTR_FILE = "rtl/instruction.hex",
+    parameter INSTR_WIDTH = 80,
+    parameter INSTR_FILE = "flash/src/emg/instruction.hex",
 
     parameter WEIGHTS_FILE_1 = "flash/src/emg/weights_1.txt",
     parameter WEIGHTS_FILE_2 = "flash/src/emg/weights_2.txt",

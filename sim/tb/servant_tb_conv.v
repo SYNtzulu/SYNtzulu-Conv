@@ -15,7 +15,7 @@ module servant_tb;
    always  #31 wb_clk <= !wb_clk;
    initial #62 wb_rst <= 1'b0;
 
-   uart_decoder #(2000000) uart_decoder (q);
+   //uart_decoder #(2000000) uart_decoder (q);
 
    servant_sim
      #(.memfile  (memfile),
