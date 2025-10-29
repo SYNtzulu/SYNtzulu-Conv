@@ -137,9 +137,9 @@ end
   integer    jj = 0;
   integer    error_bin = 0;
   wire [3:0] bin;
-  assign bin = servant_sim_i.service_i.mosquito.encoding_slot_i.encoding_slot_emg_i.spike_bin;
+  //assign bin = servant_sim_i.service_i.mosquito.encoding_slot_i.encoding_slot_emg_i.spike_bin;
   wire       valid_bin;
-  assign valid_bin = servant_sim_i.service_i.mosquito.encoding_slot_i.encoding_slot_emg_i.valid_bin;
+  //assign valid_bin = servant_sim_i.service_i.mosquito.encoding_slot_i.encoding_slot_emg_i.valid_bin;
 
   always @(posedge wb_clk) begin
     if(valid_bin) begin

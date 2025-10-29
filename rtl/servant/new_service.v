@@ -10,6 +10,9 @@ module service #(
     parameter DW = `DW,
     
     parameter WIDTH = 16,
+    parameter BUFFER_WIDTH = 32,
+    parameter N_CLASSES = 10,
+    parameter TIME_STEPS = 48,
 	
 	parameter MAX_NEURONS = 128,
 	parameter MAX_SYNAPSES = 128,
@@ -19,12 +22,12 @@ module service #(
     parameter MAX_THRESHOLD = 65536,
 
     parameter INSTR_WIDTH = 80,
-    parameter INSTR_FILE = "flash/src/emg/instruction.hex",
+    parameter INSTR_FILE = "flash/src/mnist/instruction.hex",
 
-    parameter WEIGHTS_FILE_1 = "flash/src/emg/weights_1.txt",
-    parameter WEIGHTS_FILE_2 = "flash/src/emg/weights_2.txt",
-    parameter WEIGHTS_FILE_3 = "flash/src/emg/weights_3.txt",
-    parameter WEIGHTS_FILE_4 = "flash/src/emg/weights_4.txt",
+    parameter WEIGHTS_FILE_1 = "flash/src/mnist/weights_1.txt",
+    parameter WEIGHTS_FILE_2 = "flash/src/mnist/weights_2.txt",
+    parameter WEIGHTS_FILE_3 = "flash/src/mnist/weights_3.txt",
+    parameter WEIGHTS_FILE_4 = "flash/src/mnist/weights_4.txt",
     
 	parameter DOUBLE_CLOCK = 0, // if DOUBLE_CLOCK = 0 clk is generated from HFOSC, allowed freq are 48,24,12,6
     parameter pClockFrequency = 24_000_000/(DOUBLE_CLOCK+1),
@@ -315,6 +318,8 @@ module service #(
         .DW(DW),
             
         .WIDTH(WIDTH),
+        .N_CLASSES(N_CLASSES),
+        .TIME_STEPS(TIME_STEPS),
 
         .MAX_NEURONS(MAX_NEURONS),
         .MAX_SYNAPSES(MAX_SYNAPSES),
@@ -331,7 +336,9 @@ module service #(
         .WEIGHTS_FILE_4(WEIGHTS_FILE_4),
 
         .WEIGHT_DEPTH_12(WEIGHT_DEPTH_12),
-        .WEIGHT_DEPTH_34(WEIGHT_DEPTH_34)
+        .WEIGHT_DEPTH_34(WEIGHT_DEPTH_34),
+
+        .BUFFER_WIDTH(BUFFER_WIDTH)
     )
     mosquito
     (

@@ -6,6 +6,9 @@ module integrator_and_fifo #(
     parameter MAX_INPUT_FEATURE = 16
     )(
     input clk, rst, en, detection,
+    input reset_potential,
+    input fix_cnt, 
+    input [7:0] square_dim_output_feature,
     input conv_enable,
     input dense_enable,
     input polling_spike_enable,
@@ -31,6 +34,9 @@ module integrator_and_fifo #(
     ) fifo_i (
         .clk(clk),
         .rst(rst),
+        .reset_potential(reset_potential),
+        .fix_cnt(fix_cnt), 
+        .square_dim_output_feature(square_dim_output_feature),
         .DI(output_new),
         .rden(en),
         .wren(valid_fifo),

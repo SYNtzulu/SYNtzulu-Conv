@@ -13,8 +13,7 @@ module instruction_memory #(
 
     wire [15:0] bram_out_data;
     reg  [15:0] bram_out;
-
-    reg  [INSTR_WIDTH-1:0] instr_parts;
+    reg  [INSTR_WIDTH-1:0] instr_parts; 
     reg  [2:0] read_cnt;
 
     localparam ADDR_WIDTH = clogb2(INSTR_DEPTH-1);
@@ -29,7 +28,6 @@ module instruction_memory #(
     localparam DONE = 2'b11;
 
     reg [1:0] state, next_state;
-    reg new_layer_en;
     reg first;
 
     // BRAM 16-bit wide
@@ -57,7 +55,7 @@ module instruction_memory #(
     always @(posedge clk)
         if (rst) state <= IDLE;
         else     state <= next_state;
-
+/*
     always @(posedge clk) begin
         if (rst)
             new_layer_en <= 0;
@@ -66,8 +64,8 @@ module instruction_memory #(
         else if (state == DONE)
             new_layer_en <= 0;
     end
-
-    wire done = en || first || new_layer_en;
+*/
+    wire done = en || first;// || new_layer_en
 
     // FSM combinatorial next state
     always @(*) begin

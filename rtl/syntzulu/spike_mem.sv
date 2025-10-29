@@ -17,8 +17,6 @@ module spike_mem #(
     input [10:0] SYNAPSES,
     input [clogb2(SPIKE_MEM_DEPTH)-1:0] spike_rd_addr_1,
     input [clogb2(SPIKE_MEM_DEPTH)-1:0] spike_rd_addr_2,
-    input spike_wr_en_in_1,
-    input spike_wr_en_in_2,
     input en_L2,
     input output_feature_finish,
     input last_layer,
@@ -26,27 +24,10 @@ module spike_mem #(
     output spike_written_comb,
     output active_spike,
     output [12:0] spike_wr_addr,
-    output [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16,
+    output reg [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16,
     output [3:0] spike_mem_out_4,
     output valid_active_group
 );  
-
-    reg spike_wr_en_1_d, spike_wr_en_1_dd;
-    reg spike_wr_en_2_d, spike_wr_en_2_dd;
-    always @(posedge clk) begin
-        if(rst) begin
-            spike_wr_en_1_d <= 0;
-            spike_wr_en_1_dd <= 0;
-            spike_wr_en_2_d <= 0;
-            spike_wr_en_2_dd <= 0;
-        end
-        else begin
-            spike_wr_en_1_d <= spike_wr_en_in_1;
-            spike_wr_en_1_dd <= spike_wr_en_1_d;
-            spike_wr_en_2_d <= spike_wr_en_in_2;
-            spike_wr_en_2_dd <= spike_wr_en_2_d;
-        end
-    end
 
     wire [clogb2(SPIKE_MEM_DEPTH)-1:0] spike_rd_addr_16_1;
     wire [clogb2(SPIKE_MEM_DEPTH)-1:0] spike_rd_addr_16_2;
@@ -71,7 +52,7 @@ module spike_mem #(
         end
     end
 
-    assign spike_mem_out_16 = layer_counter ? spike_mem_out_16_2 : spike_mem_out_16_1;
+    //assign spike_mem_out_16 = layer_counter ? spike_mem_out_16_2 : spike_mem_out_16_1;
 
     assign spike_mem_out_4 = select_spike_out_dd == 2'b00 ? spike_mem_out_16[15:12] :
                               select_spike_out_dd == 2'b01 ? spike_mem_out_16[11:8] :
@@ -82,8 +63,7 @@ module spike_mem #(
     wire [15:0] spike_mem_in;
     wire spike_wr_en;
 
-    wire [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16_1_bram, spike_mem_out_16_2_bram;
-    reg  [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16_1, spike_mem_out_16_2;
+    wire [SPIKE_MEM_WIDTH-1:0] spike_mem_out_16_bram, spike_mem_out_16_bram_1, spike_mem_out_16_bram_2;
 
     spike_mem_buffer spike_buffer (
         .clk(clk),
@@ -110,41 +90,43 @@ module spike_mem #(
 
     wire [10:0] spike_wr_addr_shift = spike_wr_addr >> 2;
 
+    wire msb_layer_counter = layer_counter || valid_encoding;
+
+    assign spike_mem_out_16_bram = msb_layer_counter ? spike_mem_out_16_bram_1 : spike_mem_out_16_bram_2;
+
     SB_RAM40_4K spike_mem_1 (
-        .RDATA(spike_mem_out_16_1_bram), 
+        .RDATA(spike_mem_out_16_bram_1), 
         .RADDR(spike_rd_addr_16), 
         .RCLK(clk), 
         .RCLKE(1'b1),
-        .RE(1'b1), 
+        .RE(msb_layer_counter), 
         .WADDR(spike_wr_addr_shift), 
         .WCLK(clk), 
         .WCLKE(1'b1),
         .WDATA(spike_mem_in), 
-        .WE(spike_wr_en && spike_wr_en_1_dd),
+        .WE(spike_wr_en && !msb_layer_counter),
         .MASK (16'h0000)
     );
 
     SB_RAM40_4K spike_mem_2 (
-        .RDATA(spike_mem_out_16_2_bram), 
+        .RDATA(spike_mem_out_16_bram_2), 
         .RADDR(spike_rd_addr_16), 
         .RCLK(clk), 
         .RCLKE(1'b1),
-        .RE(1'b1), 
+        .RE(!msb_layer_counter), 
         .WADDR(spike_wr_addr_shift), 
         .WCLK(clk), 
         .WCLKE(1'b1),
         .WDATA(spike_mem_in), 
-        .WE(spike_wr_en && spike_wr_en_2_dd),
+        .WE(spike_wr_en && msb_layer_counter),
         .MASK (16'h0000)
     );
 
     always @(posedge clk) begin
         if (rst) begin
-            spike_mem_out_16_1 <= 0;
-            spike_mem_out_16_2 <= 0;
+            spike_mem_out_16 <= 0;
         end else begin
-            spike_mem_out_16_1 <= spike_mem_out_16_1_bram;
-            spike_mem_out_16_2 <= spike_mem_out_16_2_bram;
+            spike_mem_out_16 <= spike_mem_out_16_bram;
         end
     end
 

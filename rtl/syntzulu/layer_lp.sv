@@ -33,6 +33,9 @@ module layer_lp
     input read_en_weight_buffer,
     input [15:0] spike_address,
     input detection,
+    input reset_potential,
+    input fix_cnt, 
+    input [7:0] square_dim_output_feature,
 
     input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_rd_addr,
     input acc_clear, acc_clear_and_go,
@@ -208,13 +211,16 @@ module layer_lp
     //////////////////////////////////////////////
 
     neuron_lp #(
-        .DEPTH(256),
+        .DEPTH(512),
         .WIDTH(WIDTH),
         .WEIGHTS(WEIGHT),
         .MAX_DECAY(MAX_DECAY),
         .MAX_INPUT_FEATURE(MAX_INPUT_FEATURE)
     )neuron_lp_i(
         .clk(clk), .rst(rst), .en(acc_clear_and_go),    
+        .reset_potential(reset_potential),        
+        .fix_cnt(fix_cnt), 
+        .square_dim_output_feature(square_dim_output_feature),
         .new_inference_start(new_inference_start),
         .conv_enable(conv_enable),
         .dense_enable(dense_enable),

@@ -29,11 +29,11 @@ module encoding_slot_emg
     input en,
     input signed [DW-1:0] data_in,
     
-    output [3:0] spike_bin,
+    //output [3:0] spike_bin,
     output pos_spike,
     output neg_spike,
-    output dm_valid,
-    output valid_bin
+    output dm_valid
+    //output valid_bin
     //output active_group_out_bin
     );
 
@@ -49,35 +49,19 @@ module encoding_slot_emg
 //                                                                              //
 //////////////////////////////////////////////////////////////////////////////////
 
-/*
-module delta_modulator #(
-    parameter WIDTH = 16
-    )
-(
-  input wire clk,           // Clock input
-  input wire rst,           // Reset input
-  input wire en,
-  input wire signed [WIDTH-1:0] samples, // Analog input samples (8-bit resolution)
-  input wire [WIDTH-1:0] delta, 
-  output reg pos_spike, neg_spike,     // Delta modulation output
-  output reg valid
-);
-*/
 
-wire [1:0] dm_spike;
-//wire pos_spike, neg_spike;
-//wire dm_valid;
+//wire [1:0] dm_spike;
 
 delta_modulator_multichannel #(.CHANNELS(CHANNELS),.WIDTH(DW)) 
 	delta_modulator_1 (.clk(clk),.rst(rst),.en(en),.samples(data_in),.pos_spike(pos_spike),.neg_spike(neg_spike),.valid(dm_valid));
 
 // 2-to-4 bits
-wire ag1,ag2;
-wire [1:0] s2p_out_1, s2p_out_2;
-s2p #(.P(2)) s2p_1 ( .clk(clk), .rst(rst), .en(dm_valid), .spike_s(pos_spike),.spike_p(s2p_out_1),.valid(valid_bin), .active_group(ag1));
-s2p #(.P(2)) s2p_2 ( .clk(clk), .rst(rst), .en(dm_valid), .spike_s(neg_spike),.spike_p(s2p_out_2),.valid(), .active_group(ag2));
-assign active_group_out_bin = ag1 | ag2;
-assign spike_bin = {s2p_out_1[1],s2p_out_2[1],s2p_out_1[0],s2p_out_2[0]};
+//wire ag1,ag2;
+//wire [1:0] s2p_out_1, s2p_out_2;
+//s2p #(.P(2)) s2p_1 ( .clk(clk), .rst(rst), .en(dm_valid), .spike_s(pos_spike),.spike_p(s2p_out_1),.valid(valid_bin), .active_group(ag1));
+//s2p #(.P(2)) s2p_2 ( .clk(clk), .rst(rst), .en(dm_valid), .spike_s(neg_spike),.spike_p(s2p_out_2),.valid(), .active_group(ag2));
+//assign active_group_out_bin = ag1 | ag2;
+//assign spike_bin = {s2p_out_1[1],s2p_out_2[1],s2p_out_1[0],s2p_out_2[0]};
 
 //  The following function calculates the address width based on specified RAM depth
 function integer clogb2;

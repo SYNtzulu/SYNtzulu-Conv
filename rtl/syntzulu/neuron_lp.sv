@@ -10,6 +10,9 @@ module neuron_lp#(
     parameter MAX_INPUT_FEATURE = 16
     )(
     input clk, rst, en,
+    input reset_potential,
+  input fix_cnt, 
+  input [7:0] square_dim_output_feature,
     input conv_enable,
     input dense_enable,
     input polling_spike_enable,
@@ -45,6 +48,9 @@ module neuron_lp#(
       .clk(clk),
       .rst(rst),
       .en(en),
+      .reset_potential(reset_potential),
+      .fix_cnt(fix_cnt), 
+      .square_dim_output_feature(square_dim_output_feature),
       .detection(detection),
       .conv_enable(conv_enable),
       .dense_enable(dense_enable),

@@ -42,7 +42,7 @@ module input_buffer
     );
 
 	localparam SIMD = (DW==8)?1:0;
-	localparam CHANNELS_INT = SIMD?CHANNELS/2:CHANNELS;
+	localparam CHANNELS_INT = SIMD?CHANNELS/2:CHANNELS/2;
 
 	reg [clogb2(CHANNELS_INT-1)-1:0] pointer;
 	reg read_flag;
@@ -57,7 +57,7 @@ module input_buffer
                 slow_stream_out <= ~slow_stream_out;
         end
     end else begin
-        always @(*) begin
+        always @(posedge clk) begin
             slow_stream_out = 1; // Combinational assignment
         end
     end

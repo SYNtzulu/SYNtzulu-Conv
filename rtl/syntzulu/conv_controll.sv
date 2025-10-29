@@ -16,6 +16,7 @@ module conv_controll #(
     input [clogb2(MAX_INPUT_FEATURE)-1:0] dim_input_feature,
     input [clogb2(MAX_NUMBER_INPUT_FEATURE):0] number_input_feature,
     input [clogb2(MAX_NUMBER_OUTPUT_FEATURE):0] number_output_feature,
+    input [3:0] dim_output_feature,
 
     input [MAX_INPUT_FEATURE-1:0] input_feature_row, //riga dell'input feature letta dalla spike_mem
     input [clogb2(WEIGHT_DEPTH)-1:0]base_address_weights,
@@ -25,13 +26,12 @@ module conv_controll #(
     output new_kernel,
     output spike_check,
     output set_fifo_neuron_address, //segnale che mi dice che devo settare l'indirizzo della fifo dei neuroni
-    output [15:0] spike_address, //indirizzi di 4 spike attivi 
-    output [3:0]dim_output_feature,
+    output [15:0] spike_address, //indirizzi di 4 spike attivi
     output reg convolution_finish,
     output reg write_en_weight_buffer,
     output reg [clogb2(WEIGHT_DEPTH)-1:0] weight_rd_addr,
     output en_L1,
-    output en_L2,
+    output reg en_L2,
     output last_input_feature,
     output first_input_feature,
     output output_feature_finish,
@@ -40,7 +40,8 @@ module conv_controll #(
 	output conv_en,
     output last_spike,
     output polling_spike,
-    output valid_polling_spike
+    output valid_polling_spike,
+    output input_feature_finish
 );
     wire convolution_enable;
 
@@ -49,7 +50,15 @@ module conv_controll #(
     reg new_conv; 
 
     assign en_L1 = convolution_enable;
-    assign en_L2 = convolution_enable && (output_feature_cnt <= number_output_feature_minus_two);
+    //assign en_L2 = number_output_feature == 1 ? 0 : convolution_enable && (output_feature_cnt <= number_output_feature_minus_two);
+    always @(posedge clk)
+        if(rst)
+            en_L2 <= 0;
+        else 
+            if(number_output_feature == 1)
+                en_L2 <= 0;
+            else
+                en_L2 <= convolution_enable && (output_feature_cnt <= number_output_feature_minus_two);
 
     assign first_input_feature = (input_feature_cnt == 0);
 
@@ -65,7 +74,7 @@ module conv_controll #(
 
     reg [clogb2(MAX_KERNEL)-1:0] row_counter;
     reg [MAX_INPUT_FEATURE*MAX_KERNEL-1:0] input_feature;
-    wire input_feature_ready;
+    reg input_feature_ready;
     wire row_finish;
     wire row_finish_new_kernel = row_finish && new_kernel;
     reg [clogb2(MAX_INPUT_FEATURE)-1:0] input_feature_row_cnt;
@@ -73,7 +82,6 @@ module conv_controll #(
     reg [clogb2(MAX_NUMBER_INPUT_FEATURE)-1:0] input_feature_cnt;
 	reg [clogb2(MAX_NUMBER_OUTPUT_FEATURE)-1:0] output_feature_cnt;
     wire all_input_feature_finish;
-    wire input_feature_finish;
     reg [clogb2(MAX_KERNEL)-1:0]weight_buffer_cnt;
     
     reg [1:0] count_weights;
@@ -155,7 +163,7 @@ module conv_controll #(
             if (input_feature_finish)
                 input_feature_row_cnt <= 0;
             else if (row_finish_new_kernel) begin
-                input_feature_row_cnt <= input_feature_row_cnt + 1;
+                input_feature_row_cnt <= input_feature_row_cnt + stride;
             end
         end
     end
@@ -191,13 +199,23 @@ module conv_controll #(
             output_feature_cnt <= 0;
 
     wire [3:0] dim_input_feature_minus_kernel = dim_input_feature - dim_kernel;
-    assign dim_output_feature = dim_input_feature_minus_kernel + 1;
-    assign input_feature_finish = row_finish_new_kernel && (input_feature_row_cnt == dim_input_feature_minus_kernel);
+    assign input_feature_finish = row_finish_new_kernel && (input_feature_row_cnt + stride >= dim_input_feature_minus_kernel + 1);
     assign all_input_feature_finish = input_feature_finish && (input_feature_cnt == number_input_feature_minus_one);
     assign output_feature_finish = all_input_feature_finish;
-    wire conv_finish = output_feature_finish && (output_feature_cnt >= number_output_feature_minus_two);
+    wire conv_finish = output_feature_finish && ((output_feature_cnt >= number_output_feature_minus_two) || number_output_feature ==1);
 
-    assign input_feature_ready = convolution_enable && (row_counter_dd == dim_kernel);
+    //assign input_feature_ready = convolution_enable && (row_counter_dd == dim_kernel);
+    always @(posedge clk)
+        if(rst)
+            input_feature_ready <= 0;
+        else if(stride != 1) begin
+            if(row_finish)
+                input_feature_ready <= 0;
+            else if (row_counter == dim_kernel && row_counter_d == dim_kernel)
+                input_feature_ready <= 1;
+        end
+        else 
+            input_feature_ready <= convolution_enable && (row_counter_dd == dim_kernel);
 
     wire en_PE;
     reg input_feature_ready_d;
@@ -213,8 +231,7 @@ module conv_controll #(
         end
     end
 
-    assign en_PE = polling_enable ? ((input_feature_ready && !input_feature_ready_d) || new_kernel_d && input_feature_ready) : 
-            (new_kernel_d && !write_en_weight_buffer) || (weights_buffer_ready && !weights_buffer_ready_d) ; //impulso di un ciclo
+    assign en_PE = (new_kernel_d && !write_en_weight_buffer && input_feature_ready) || (input_feature_ready && weights_buffer_ready && !weights_buffer_ready_d) || (input_feature_ready && !input_feature_ready_d && weights_buffer_ready) ; //impulso di un ciclo
 
     always @(posedge clk) begin
         if (rst) begin
@@ -225,6 +242,8 @@ module conv_controll #(
                 row_counter <= row_counter + 1;
             else if(input_feature_finish)
                 row_counter <= 0;
+            else if(row_finish && stride != 1)
+                row_counter <= row_counter - stride + 1;
             end
         else begin
             row_counter <= 0;

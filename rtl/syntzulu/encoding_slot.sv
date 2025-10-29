@@ -37,7 +37,7 @@ module encoding_slot
 
 wire signed [DW-1:0] data_out_buffer;
 //wire input_buffer_valid;
-
+`ifdef EMG
 input_buffer
 	#(
 	.CHANNELS(CHANNELS),
@@ -62,8 +62,34 @@ input_buffer_i
 wire [3:0] spike_bin_int;
 wire valid_bin_int;
 wire active_group_out_bin_int;
+`endif 
 
+`ifdef MNIST
+	// CHANNELS = 32
+	// DW = 16
+    encoding_spike_buffer #(
+        .CHANNELS (CHANNELS),
+        .DW       (DW)
+    )encoding_spike_buffer_i (
+        .clk    (clk),
+        .rst    (rst | inference_done),    // reset sincrono per ogni inferenza
+        .en     (en),
+        .data_in(data_in),
+		.valid(input_buffer_valid),
 
+        .valid_encoding (valid_encoding),       // usa valid_encoding come segnale ready
+        .s1_encoding(s1_encoding),                    // non usati qui dentro
+        .s2_encoding(s2_encoding),
+
+        // porte esterne (debug)
+        .external_access_en   (i_sample_mem_rd_en),
+        .external_addr        (i_sample_mem_adr[clogb2(CHANNELS/16)-1:0]),
+        .external_data_out    (o_sample_mem_dat),
+        .external_access_wren (i_sample_mem_wr_en),
+        .external_data_in     (i_sample_mem_dat)
+    );
+
+`endif 
 `ifdef IEEG
 
 	////////////////////////////////////////////////// 
@@ -114,10 +140,6 @@ wire active_group_out_bin_int;
 		.rst(rst),
 		.en(input_buffer_valid),
 		.data_in(data_out_buffer),
-
-		//.spike_bin(spike_bin_int),
-		//.valid_bin(valid_bin_int),
-		//.active_group_out_bin(active_group_out_bin_int)
 
 		.pos_spike(s1_encoding),
 		.neg_spike(s2_encoding),

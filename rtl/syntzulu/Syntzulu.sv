@@ -11,6 +11,8 @@ module Syntzulu
     parameter DW = 15,
     
     parameter WIDTH = 16,
+    parameter N_CLASSES = 10,
+    parameter TIME_STEPS = 48,
 
 	parameter MAX_SYNAPSES = 128,
 	parameter MAX_NEURONS = 128,
@@ -28,7 +30,9 @@ module Syntzulu
     parameter WEIGHTS_FILE_4 = "",
     
     parameter WEIGHT_DEPTH_12 = 8192,
-    parameter WEIGHT_DEPTH_34 = 8192
+    parameter WEIGHT_DEPTH_34 = 8192,
+
+    parameter BUFFER_WIDTH = 32
 )
 (
     input clk_enc, clk_snn, rst,
@@ -95,7 +99,7 @@ module Syntzulu
 	// output buffer access
 	input output_buffer_ren,
 	input [7:0] output_buffer_addr,
-	output [31:0] output_buffer_out
+	output [BUFFER_WIDTH-1:0] output_buffer_out
     );
 
  localparam SPIKE  = 4;
@@ -129,10 +133,6 @@ encoding_slot_i
     .en(en),
     .data_in(data_in),
     .detect(detect),
-
-    //.spike_bin(spike_bin), --- IGNORE ---
-    //.valid_bin(valid_bin), --- IGNORE ---
-    //.active_group_out_bin(active_group_out_bin), --- IGNORE ---
 
     .s1_encoding(s1_encoding),
     .s2_encoding(s2_encoding),
@@ -171,9 +171,13 @@ encoding_slot_i
 //                                          //
 //////////////////////////////////////////////
 
-wire valid_potential;
+wire valid_snn;
 wire [SPIKE-1:0] spike_out_snn;
 wire valid_spike;
+wire s1, s2;
+wire [WIDTH-1:0] voltage_1, voltage_2;
+wire [clogb2(MAX_NEURONS/2-1)-1:0] integrated_neurons_cnt;
+wire reset_potential;
 
 snn_lp
     #(
@@ -199,15 +203,13 @@ snn_lp_i
     (
     .clk(clk_snn),
     .rst(rst),
-    //.en(valid_bin),
     .en(valid_encoding),
     .s1_encoding(s1_encoding),
     .s2_encoding(s2_encoding),
-    //.spike_in(spike_bin),
-    //.active_group_in(active_group_out_bin),
-    .valid(valid_potential),
+    .valid(valid_snn),
     .valid_spike(valid_spike),
     .spike_out(spike_out_snn),
+    .reset_potential(reset_potential),
     .integrated_neuron(integrated_neuron),
     .weight_mem_L1_wren(weight_mem_L1_wren),
     .weight_mem_L1_wr_addr(weight_mem_L1_wr_addr),
@@ -232,9 +234,12 @@ snn_lp_i
     .i_spike_mem_dat(i_spike_mem_dat),
     .snn_input_channels(snn_input_channels),
     .layers(layers),
-    .output_buffer_ren(output_buffer_ren),
-    .output_buffer_addr(output_buffer_addr),
-    .output_buffer_out(output_buffer_out),
+    .voltage_1(voltage_1),
+    .voltage_2(voltage_2),
+    .s1(s1),
+    .s2(s2),
+    .last_layer(last_layer),
+    .integrated_neurons_cnt(integrated_neurons_cnt),
     .input_buffer_valid(input_buffer_valid)
     );
 
@@ -246,8 +251,72 @@ snn_lp_i
 //  |____/|_____\____\___/|____/___|_| \_|\____| |____/|_____\___/ |_|   //
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
+
+assign valid = valid_snn;
+parameter OUTPUT_BUFFER_DEPTH = MAX_NEURONS/8;
+
+wire output_buffer_wr_en;
+wire [BUFFER_WIDTH-1:0] output_buffer_din;
+wire [clogb2(OUTPUT_BUFFER_DEPTH)-1:0] output_buffer_wr_addr;
+
+    decoding_slot #(
+        .MAX_NEURONS (MAX_NEURONS),
+        .N_CLASSES   (N_CLASSES),
+        .INFERENCES  (TIME_STEPS),
+        .BUFFER_WIDTH (BUFFER_WIDTH),
+        .OUTPUT_BUFFER_DEPTH(OUTPUT_BUFFER_DEPTH)
+    ) decoding_slot_i (
+        .clk(clk_snn),
+        .rst(rst),
+        .valid_snn(valid_snn),
+        .s1(s1),
+        .s2(s2),
+        .integrated_neuron(integrated_neuron),
+        .last_layer(last_layer),
+        .valid_spike_in(valid_spike),
+        .integrated_neurons_cnt(integrated_neurons_cnt),
+        .voltage_1(voltage_1),
+        .voltage_2(voltage_2),
+        .reset_potential(reset_potential),
+        .output_buffer_din(output_buffer_din),
+        .output_buffer_wr_en(output_buffer_wr_en),
+        .output_buffer_wr_addr(output_buffer_wr_addr)
+    );
  
-assign valid = valid_potential;
+    ///////////////////////////////////////////
+    //   ___  _   _ _____ ____  _   _ _____  //
+    //  / _ \| | | |_   _|  _ \| | | |_   _| //
+    // | | | | | | | | | | |_) | | | | | |   //
+    // | |_| | |_| | | | |  __/| |_| | | |   //
+    //  \___/ \___/  |_| |_|    \___/  |_|   //
+    //  ____  _   _ _____ _____ _____ ____   //
+    // | __ )| | | |  ___|  ___| ____|  _ \  //
+    // |  _ \| | | | |_  | |_  |  _| | |_) | //
+    // | |_) | |_| |  _| |  _| | |___|  _ <  //
+    // |____/ \___/|_|   |_|   |_____|_| \_\ //
+    //                                       //
+    ///////////////////////////////////////////
+
+    BRAM_singlePort_readFirst #(
+    .RAM_WIDTH(BUFFER_WIDTH),            
+    .RAM_DEPTH(OUTPUT_BUFFER_DEPTH),    //ho ipotizzato 1/8 del massimo nunmero di neuroni          
+    .RAM_PERFORMANCE("LOW_LATENCY"), 
+    .INIT_FILE("")          
+    )
+        output_buffer
+    (
+    .addra(output_buffer_wr_addr),   
+    .addrb(output_buffer_addr),  
+    .dina(output_buffer_din),   
+    .clk(clk),      
+    .wea(output_buffer_wr_en),      
+    .ena(output_buffer_wr_en),      
+    .enb(output_buffer_ren),      
+    .rst(rst),      
+    .regceb(1'b1),
+    
+    .doutb(output_buffer_out)   
+        );
    
 //  The following function calculates the address width based on specified RAM depth
 function integer clogb2;

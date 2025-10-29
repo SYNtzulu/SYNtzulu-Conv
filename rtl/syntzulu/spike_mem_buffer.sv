@@ -26,6 +26,16 @@ module spike_mem_buffer (
     wire carry;
     reg valid;
     reg [3:0] spike_counter;
+
+    reg en_L2_d;
+    always @(posedge clk) begin
+        if(rst) begin
+            en_L2_d <= 0;
+        end
+        else begin
+            en_L2_d <= en_L2;
+        end
+    end
     
     wire [2:0] spike_counter_3_1 = spike_counter[3:1]; 
     wire [1:0] spike_counter_1_0 = spike_counter[1:0];
@@ -101,6 +111,7 @@ module spike_mem_buffer (
 
     wire dense_two_valid = dense_enable && valid_s1 && valid_s2;
     wire conv_one_valid  = conv_enable  && valid_one_s;
+    wire finish_synapses = conv_enable && spike_addr == SYNAPSES;
 
     always @(posedge clk) begin
         if (rst || spike_written) begin
@@ -111,7 +122,7 @@ module spike_mem_buffer (
             // Caso: arrivano due valid contemporaneamente
             if (spike_counter < next_dim_input_feature_minus_two) begin
                 spike_counter <= spike_counter + 2'd2;
-                valid         <= 1'b0;
+                valid <= 0;//finish_synapses;
             end 
             else begin
                 valid <= 1'b1;
@@ -121,7 +132,7 @@ module spike_mem_buffer (
         end else if (conv_one_valid) begin
             if (spike_counter < next_dim_input_feature) begin
                 spike_counter <= spike_counter + 1'd1;
-                valid <= ((spike_counter == next_dim_input_feature_minus_one) || spike_addr_d == SYNAPSES);
+                valid <= ((spike_counter == next_dim_input_feature_minus_one)); // || finish_synapses);//|| spike_addr_d == SYNAPSES
             end else begin
                 spike_counter <= 1'd1;
                 valid         <= 1'b0;
@@ -143,7 +154,7 @@ module spike_mem_buffer (
             valid_d <= valid && en_L2;
     end
 
-    assign spike_wr_en = dense_enable ? valid :  valid || valid_d;
+    assign spike_wr_en = dense_enable ? valid || finish_synapses :  valid || valid_d;
 
     reg spike_wr_en_d;
     always @(posedge clk) begin
@@ -152,7 +163,7 @@ module spike_mem_buffer (
         else
             spike_wr_en_d <= spike_wr_en;
     end
-
+/*
     always @(posedge clk) begin
         if(rst)
             spike_written <= 0;
@@ -162,14 +173,23 @@ module spike_mem_buffer (
             spike_written <= 1;
         else
             spike_written <= 0; 
+    end*/
+
+    always @(posedge clk) begin
+        if(rst)
+            spike_written <= 0;
+        else if(!spike_written)
+            spike_written <= spike_written_comb;
+        else
+            spike_written <= 0;
     end
 
     always @(*) begin
         if(rst)
             spike_written_comb = 0;
-        else if ((spike_wr_en_d && (spike_addr_d >= SYNAPSES)))
+        else if (!en_L2_d && (spike_wr_en_d && (spike_addr_d >= SYNAPSES)))
             spike_written_comb = 1;
-        else if(conv_enable && !dense_enable && spike_wr_en && (spike_wr_addr >= SYNAPSES))
+        else if(en_L2_d && ((spike_wr_addr >= SYNAPSES)) && (spike_wr_en || spike_wr_en_d)) 
             spike_written_comb = 1;
         else
             spike_written_comb = 0; 
@@ -213,7 +233,7 @@ module spike_mem_buffer (
     wire spike_counter_1_0_equal_1 = spike_counter_1_0 == 2'b01;
 
     
-    wire step_conv   = conv_enable  && (spike_counter_1_0_equal_3);
+    wire step_conv   = conv_enable && !dense_enable && ((en_L2 && spike_counter_1_0_equal_3) || spike_counter[2:0] == 3'b100);
     wire step_dense  = dense_enable && (spike_counter_1_0_equal_1 || spike_counter_1_0_equal_2);
     
     reg [12:0] spike_addr;
@@ -226,12 +246,12 @@ module spike_mem_buffer (
             else if (step_dense || step_conv)
                 spike_addr <= spike_addr + 1;
         end
+        else if(spike_written || last_layer)
+            spike_addr <= 0;
         else if(jump_L2)
             spike_addr <= (spike_addr & 13'h1FC0) + 128;
         else if(jump_L1)
             spike_addr <= (spike_addr & 13'h1FF0) + 64;
-        else if(spike_written || last_layer)
-            spike_addr <= 0;
     end
 
     reg [12:0] spike_addr_d;

@@ -15,11 +15,12 @@ module instruction_decoder #(
     // --- campi CONV ---
     output wire [5:0]  number_input_feature,     // [75:71]
     output wire [5:0]  number_output_feature,    // [68:64]
-    output wire [3:0]  size_input_feature,       // [30:27]
+    output wire [4:0]  size_input_feature,       // [30:27]
     output wire [1:0]  stride,                   // [70:69]
     output wire [1:0]  kernel_size,              // [77:76]
     output wire        dense_next,               // [79]
     output wire [10:0] SYNAPSES,
+    output wire [3:0] size_output_feature,
     output wire [7:0] square_dim_output_feature                  
 );
 
@@ -35,11 +36,12 @@ module instruction_decoder #(
     // === SOLO CONV ===
     assign number_input_feature   = instr[75:71] + 1;   
     assign number_output_feature  = instr[68:64] + 1;   
-    assign size_input_feature     = instr[30:27];   
+    assign size_input_feature     = instr[30:27] + 1;   
     assign kernel_size            = instr[77:76];
     assign stride                 = instr[70:69];
     assign dense_next             = instr[79];
     assign square_dim_output_feature = instr[15:8];
+    assign size_output_feature    = instr[8:5];   
 
     assign SYNAPSES               = instr[25:16];
 

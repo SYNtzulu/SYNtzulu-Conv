@@ -10,7 +10,7 @@ netlist:
 build:
 	cd firmware && make -B
 	yosys -p "synth_ice40 -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-	nextpnr-ice40 --up5k --seed 9 --placer heap --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
+	nextpnr-ice40 --up5k --seed 16 --threads $$(nproc) --package sg48 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc --report timing.rpt -l output/nextpnr.log -v 
 	icepack output/$(filename).asc output/$(filename).bin -s
 	
 build_stat:
@@ -22,40 +22,35 @@ build_stat:
 	     -l output/yosys_stat.log
 
 # Lista di seed da testare (modifica liberamente)
-SEEDS = 1 2 3 4 5 6 7 8 9 10 42 99
+SEEDS = 1 2 3 4 5 6 7 8 9 10 37 42 99
 
 build_best:
-	@echo "=== ⚡ Ricerca veloce del miglior seed (Yosys una sola volta) ==="
-	@rm -f output/nextpnr_results.txt
-
-	@# Esegui Yosys una sola volta
-	@echo "▶️  Sintesi con Yosys..."
-	yosys -p "synth_ice40 -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" \
-	      rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-
-	@# Ciclo per provare diversi seed
-	@for s in $(SEEDS); do \
-		echo "▶️  Place & Route con seed $$s..."; \
-		nextpnr-ice40 --up5k --placer heap --json output/$(filename).json --pcf $(pcf_file) \
-		              --asc output/$(filename)_$$s.asc --seed $$s -l output/nextpnr_$$s.log; \
-		icepack output/$(filename)_$$s.asc output/$(filename)_$$s.bin -s; \
-		FREQ=$$(grep "Max frequency" output/nextpnr_$$s.log | tail -1 | awk '{print $$NF}'); \
-		if [ -n "$$FREQ" ]; then \
-			echo "$$s $$FREQ" >> output/nextpnr_results.txt; \
-			echo "✅ Seed $$s → $$FREQ MHz"; \
-		else \
-			echo "⚠️  Seed $$s → nessuna frequenza trovata"; \
-		fi; \
-	done
-
-	@echo ""
-	@echo "=== 📊 Risultati sintetici ==="
-	@sort -nr -k2 output/nextpnr_results.txt | tee output/nextpnr_sorted.txt
-	@BEST_SEED=$$(sort -nr -k2 output/nextpnr_results.txt | head -1 | awk '{print $$1}'); \
-	 BEST_FREQ=$$(sort -nr -k2 output/nextpnr_results.txt | head -1 | awk '{print $$2}'); \
-	 echo ""; \
-	 echo "🌟 Miglior seed: $$BEST_SEED con $$BEST_FREQ MHz"; \
-	 echo "📦 File binario: output/$(filename)_$$BEST_SEED.bin"
+	cd firmware && make -B
+	@mkdir -p logs output/best
+	@rm -f output/best_freq.txt
+	yosys -p "synth_ice40 -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
+	@echo "Seed | Fmax (MHz)" > output/best_freq.txt
+	@for SEED in $$(seq 1 100); do \
+		echo ">>> Trying seed $$SEED..."; \
+		nextpnr-ice40 --up5k --package sg48 \
+			--json output/$(filename).json \
+			--pcf $(pcf_file) \
+			-l output/best/nextpnr/nextpnr_seed$$SEED.log \
+			--asc output/best/$(filename)_seed$$SEED.asc \
+			--threads $$(nproc) \
+			--seed $$SEED --timing-allow-fail \
+			> logs/nextpnr_seed$$SEED.log 2>&1; \
+		FREQ=$$(grep "Max frequency for clock" logs/nextpnr_seed$$SEED.log | \
+			sed -nE "s/.*clock  '[^']+': ([0-9]+\.[0-9]+) MHz.*/\1/p" | tail -n 1); \
+		[ -z "$$FREQ" ] && FREQ="0.00"; \
+		echo "Seed $$SEED => $$FREQ MHz"; \
+		echo "$$SEED | $$FREQ" >> output/best_freq.txt; \
+	done; \
+	tail -n +2 output/best_freq.txt | sort -nr -k2,2 -t'|' > output/best/best_seed.txt; \
+	BEST_SEED=$$(head -n1 output/best/best_seed.txt | cut -d '|' -f1 | tr -d ' '); \
+	cp output/best/$(filename)_seed$$BEST_SEED.asc output/$(filename).asc; \
+	echo "==> Best seed: $$BEST_SEED"; \
+	icepack output/$(filename).asc output/$(filename).bin -s
 
 
 build_no_flatten:
@@ -88,7 +83,7 @@ simulate_sy:
 
 simulate:
 	cd firmware && make -B
-	iverilog -o rtl_sim  rtl/define.v sim/tb/servant_tb_conv.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/primitive/* sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
+	iverilog -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/primitive/* sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
 	vvp rtl_sim
 	rm rtl_sim 
 	mv tb_serv.vcd work/

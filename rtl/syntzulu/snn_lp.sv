@@ -34,6 +34,7 @@ module snn_lp
 
     input s1_encoding,
     input s2_encoding,
+    input reset_potential,
 
     // output
     output valid,	
@@ -77,9 +78,11 @@ module snn_lp
 	input wire [2:0] layers,
 
 	// output buffer access
-	input output_buffer_ren,
-	input [7:0] output_buffer_addr,
-	output [31:0] output_buffer_out,
+    output wire signed [WIDTH-1:0] voltage_1,
+    output wire signed [WIDTH-1:0] voltage_2,
+    output s1, s2,
+    output last_layer,
+    output reg [clogb2(MAX_NEURONS/2-1)-1:0] integrated_neurons_cnt,
     input input_buffer_valid
     );
 
@@ -89,9 +92,6 @@ localparam TOTAL_NEURONS = 4*MAX_NEURONS;
 localparam MAX_SYNAPSES_DENSE = 128;
 
 localparam WEIGHT_ADDRESS_SIZE = clogb2(MAX_NEURONS/2-1) + clogb2(MAX_SYNAPSES_DENSE/4-1) + clogb2(LAYERS-1);
-
-// interconnection signals
-wire s1, s2;
 
 /* PROGRAMM COUNTER */
 wire [INSTR_WIDTH-1:0] current_instr;
@@ -115,7 +115,7 @@ instruction_memory #(
     .clk(clk),
     .rst(rst),
     .new_inference_start(start_instruction),
-    .en(layer_integrated_conv || (dense_enable && layer_integrated)),
+    .en((output_feature_integrated && last_output_feature) || (dense_enable && layer_integrated)),
     .instruction(current_instr)
 );
 
@@ -129,10 +129,10 @@ wire [clogb2(MAX_DECAY)-1:0] voltage_decay;
 wire [clogb2(MAX_THRESHOLD)-1:0] threshold;
 wire [3:0] bit_for_spike;
 wire [clogb2(MAX_INPUT_FEATURE):0] number_input_feature;
-wire [clogb2(MAX_INPUT_FEATURE):0] number_output_feature;
-wire [clogb2(MAX_INPUT_FEATURE):0] size_input_feature;
+wire [clogb2(MAX_INPUT_FEATURE)-1:0] number_output_feature;
+wire [clogb2(MAX_INPUT_FEATURE)-1:0] size_input_feature;
 wire [1:0] stride;
-wire [clogb2(MAX_INPUT_FEATURE)-1:0] kernel_size;
+wire [1:0] kernel_size;
 wire [4:0] next_dim_input_feature;
 wire dense_next;
 wire [10:0] SYNAPSES_instr;
@@ -155,6 +155,7 @@ instruction_decoder #(
     .kernel_size(kernel_size),
     .dense_next(dense_next),
     .SYNAPSES (SYNAPSES_instr),
+    .size_output_feature(dim_output_feature),
     .square_dim_output_feature(NEURON_CONV)
     );
 
@@ -166,15 +167,15 @@ instruction_decoder #(
  |_____|_|             |_____|_|
                                 
 */    
-wire signed [WIDTH-1:0] voltage_1;
+
 wire acc_clear_and_go;
 wire acc_clear;
 wire last_input_feature_out;
 wire convolution_valid_dense;
 wire valid_spike_1, valid_spike_2;
 
-assign valid_spike_1 = dense_enable ? integrated_neuron_1 : integrated_neuron_1 && last_input_feature_out;
-assign valid_spike_2 = dense_enable ? integrated_neuron_2 : integrated_neuron_2 && last_input_feature_out;
+assign valid_spike_1 = dense_enable || polling_enable? integrated_neuron_1 : integrated_neuron_1 && last_input_feature_out;
+assign valid_spike_2 = dense_enable || polling_enable? integrated_neuron_2 : integrated_neuron_2 && last_input_feature_out;
 
 assign acc_clear_and_go = conv_enable ? convolution_pipe_full : convolution_valid;
 
@@ -199,14 +200,25 @@ lif_pipe lif_pipe_i (
     .detection(spike_check),
     .first_input_feature(first_input_feature),
     .last_input_feature(last_input_feature),
-    .en_L2(en_L2),
+    .input_feature_finish(input_feature_finish),
+    .en_L2(conv_enable ? en_L2 : 1),
     .detection_out(detection_out_pipe),
     .first_input_feature_out(first_input_feature_out),
     .last_input_feature_out(last_input_feature_out),
-    .en_L2_out(en_L2_out)
+    .en_L2_out(en_L2_out),
+    .input_feature_finish_out(input_feature_finish_out)
 );
 
+reg last_input_feature_d;
+always @(posedge clk)
+    if(rst)
+        last_input_feature_d <= 0;
+    else 
+        last_input_feature_d <= last_input_feature;
+
 assign detection_computed = conv_enable ? (polling_enable ? 0 : detection_out_pipe) : spike_check;
+
+wire flush_fifo = first_input_feature_out;
 
 layer_lp
     #(
@@ -234,6 +246,9 @@ layer_lp_l1_i
     .threshold(threshold),
     .new_inference_start(start_instruction),
     .detection(detection_computed),
+    .reset_potential(reset_potential && flush_fifo),
+    .fix_cnt(input_feature_finish_out  && !last_input_feature_out), 
+    .square_dim_output_feature(NEURON_CONV),
 
     .set_address(set_fifo_neuron_address),
     .dim_output_feature(dim_output_feature),
@@ -280,7 +295,6 @@ layer_lp_l1_i
  |_____|_|             |_____|_____|
                                     
 */
-wire signed [WIDTH-1:0] voltage_2;
 wire conv_en_L2;
 
 assign conv_en_L2 = conv_enable ? en_L2 : 1;
@@ -312,6 +326,9 @@ layer_lp_l2_i
     .threshold(threshold),
     .new_inference_start(start_instruction),
     .detection(detection_computed),
+    .reset_potential(reset_potential && flush_fifo),
+    .fix_cnt(input_feature_finish_out && !last_input_feature_out), 
+    .square_dim_output_feature(NEURON_CONV),
 
     .set_address(set_fifo_neuron_address),
     .dim_output_feature(dim_output_feature),
@@ -387,21 +404,24 @@ reg [clogb2(MAX_SYNAPSES_CONV)-1:0] SYNAPSES;
 
 always @(posedge clk)
     if(rst)
-        SYNAPSES <= 98/4-1;
+        SYNAPSES <= 512/4-1;
     else if (spike_written_d) begin
         if (spike_written_counter == 0)
-            SYNAPSES <= 98/4-1;
+            SYNAPSES <= 512/4-1;
         else 
             SYNAPSES <= SYNAPSES_instr;
     end
 
-reg spike_written_d;
+reg spike_written_d, spike_written_dd;
 always @(posedge clk)
-    if (rst)
+    if (rst) begin
         spike_written_d <= 0;
-    else
+        spike_written_dd <= 0;
+    end
+    else begin
         spike_written_d <= spike_written;
-
+        spike_written_dd <= spike_written_d;
+    end
 
 always @(posedge clk)
     if (rst)
@@ -501,13 +521,14 @@ conv_controll #(
     
     .dim_input_feature(size_input_feature),
     .dim_kernel(kernel_size),
+    .dim_output_feature(dim_output_feature),
     .input_feature_row(spike_mem_out_16),
     .number_input_feature(number_input_feature),
     .number_output_feature(number_output_feature),
     .first_input_feature(first_input_feature),
     .base_address_weights(BASE_ADDRESS_WEIGHTS*layer_counter),
     .weights_buffer_ready(weights_buffer_ready),
-    .dim_output_feature(dim_output_feature),
+    .input_feature_finish(input_feature_finish),
     
     .spike_address(spike_address),
     .convolution_finish(convolution_finish),
@@ -604,30 +625,7 @@ assign integrated_neuron = integrated_neuron_1; // integrated_neuron 1 and 2 are
 // Integrated neurons counter
 
 wire [clogb2(MAX_INPUT_FEATURE*MAX_INPUT_FEATURE)-1:0] NEURON_CONV;
-/*
-// Istanziazione del blocco DSP
-    SB_MAC16 #(
-        .TOPOUTPUT_SELECT(2'b11),
-        .BOTOUTPUT_SELECT(2'b11),
-        .TOPADDSUB_UPPERINPUT(1'b1),
-        .TOPADDSUB_LOWERINPUT(2'b10),
-        .BOTADDSUB_UPPERINPUT(1'b1),
-        .BOTADDSUB_LOWERINPUT(2'b10),
-        .TOPADDSUB_CARRYSELECT(2'b10)
-    ) neuron_conv (
-        .A(dim_output_feature),
-        .B(dim_output_feature),
-        .O(square_dim_output_feature),
-        .CLK(clk),
-        .CE(1'b1),
-        .IRSTTOP(rst),
-        .IRSTBOT(rst)
-    );
 
-wire[31:0] square_dim_output_feature;
-assign NEURON_CONV = square_dim_output_feature[7:0] - 1;
-*/
-reg [clogb2(MAX_NEURONS/2-1)-1:0] integrated_neurons_cnt; 
 wire [7:0] neuron_limit = dense_enable ? NEURON : NEURON_CONV;
 wire next_reset_cond     = conv_enable && !last_input_feature_out;
 
@@ -670,10 +668,10 @@ always @(posedge clk) begin
     end
 end
 
-wire [clogb2(MAX_INPUT_FEATURE)-1:0] number_output_feature_minus_two = number_output_feature - 2;
+wire signed [clogb2(MAX_INPUT_FEATURE)-1:0] number_output_feature_minus_two = number_output_feature - 2;
 wire [clogb2(MAX_INPUT_FEATURE)-1:0] number_output_feature_minus_one = number_output_feature - 1;
 
-assign last_output_feature = (output_feature_integrated_cnt >= number_output_feature_minus_two);
+assign last_output_feature = en_L2_out ? (output_feature_integrated_cnt >= number_output_feature_minus_two) :(output_feature_integrated_cnt >= number_output_feature_minus_one);
 
 reg layer_integrated_conv;
 
@@ -707,7 +705,7 @@ always @(posedge clk)
         layer_integrated_conv_d  <= layer_integrated_conv;
     end
 
-assign layer_integrated = conv_enable ? layer_integrated_conv_d : layer_integrated_dense;
+assign layer_integrated = conv_enable ? layer_integrated_conv : layer_integrated_dense;
 
 reg layer_integrated_d, layer_integrated_dd;
 
@@ -819,16 +817,10 @@ assign empty = layer_counter[0]?empty_2:empty_1;
 
 wire [3:0] spike_mem_out_1;
 wire [clogb2(MAX_SYNAPSES_CONV/4-1)-1:0] spike_rd_addr_1;
-wire spike_wr_en_1; 
 wire [15:0] spike_mem_out_16_1, spike_mem_out_16_2;
 
 wire [3:0] spike_mem_out_2;
 wire [clogb2(MAX_SYNAPSES_CONV/4-1)-1:0] spike_rd_addr_2;
-wire spike_wr_en_2; 
-
-assign spike_wr_en_1 = (layer_counter[0]) || en;
-
-assign spike_wr_en_2 =  ~layer_counter[0];
 
 wire [clogb2(SPIKE_MEM_DEPTH)-1:0] spike_rd_addr_1_mux, spike_rd_addr_2_mux, spike_wr_addr_mux;
 assign spike_rd_addr_1_mux = i_spike_mem_rd_en[0] ? i_spike_mem_adr : 
@@ -843,7 +835,6 @@ wire [12:0] spike_wr_addr_1, spike_wr_addr_2;
 
 wire spike_written_1, spike_written_2;
 
-wire last_layer;
 assign last_layer = (layer_counter == LAYERS -1) ? 1 : 0;
 
 parameter SPIKE_MEM_DEPTH = 256;
@@ -860,7 +851,7 @@ spike_mem #(
     .s1(en? s1_encoding : s1),
     .valid_s1(((valid_spike_1) && !last_layer)|| en),
     .s2(en? s2_encoding : s2),
-    .valid_s2(((valid_spike_2) && !last_layer)|| en),
+    .valid_s2((((valid_spike_2) && !last_layer) && en_L2_out)|| en),
     .dense_enable(dense_enable || dense_next),
     .conv_enable(conv_enable),
     .next_dim_input_feature(en && conv_enable ? size_input_feature : next_dim_input_feature),
@@ -871,8 +862,6 @@ spike_mem #(
     .spike_rd_addr_2(spike_rd_addr_2_mux),
     .last_layer(last_layer),
     .spike_wr_addr(spike_wr_addr),
-    .spike_wr_en_in_1(spike_wr_en_1),
-    .spike_wr_en_in_2(spike_wr_en_2),
     .active_spike(active_spike),
     .spike_mem_out_16(spike_mem_out_16),
     .spike_mem_out_4(spike_mem_out_4),
@@ -882,8 +871,8 @@ spike_mem #(
 
 wire [3:0] spike_mem_out, spike_mem_out_4;
 wire [15:0] spike_mem_out_16;
-assign spike_mem_out = conv_enable ? 4'b1111 : 
-                        empty ? 4'b0: spike_mem_out_4;
+assign spike_mem_out = conv_enable ? 4'b1111 :
+                        (empty) ? 4'b0 : spike_mem_out_4;
 
 wire [WEIGHT_ADDRESS_SIZE-1:0] weight_rd_addr_dense;
 wire [WEIGHT_ADDRESS_SIZE-1:0] weight_rd_addr_conv;
@@ -896,45 +885,6 @@ wire [WEIGHT_ADDRESS_SIZE-LAYERS_BITS-2:0] last_address;
 assign last_address = (neuron_cnt << bit_for_spike) + spike_rd_addr;
 assign weight_rd_addr_dense = {1'b0, layer_counter, last_address};
 
-///////////////////////////////////////////
-//   ___  _   _ _____ ____  _   _ _____  //
-//  / _ \| | | |_   _|  _ \| | | |_   _| //
-// | | | | | | | | | | |_) | | | | | |   //
-// | |_| | |_| | | | |  __/| |_| | | |   //
-//  \___/ \___/  |_| |_|    \___/  |_|   //
-//  ____  _   _ _____ _____ _____ ____   //
-// | __ )| | | |  ___|  ___| ____|  _ \  //
-// |  _ \| | | | |_  | |_  |  _| | |_) | //
-// | |_) | |_| |  _| |  _| | |___|  _ <  //
-// |____/ \___/|_|   |_|   |_____|_| \_\ //
-//                                       //
-///////////////////////////////////////////
-
-wire output_buffer_wr_en;
-wire [31:0] output_buffer_din;
-assign output_buffer_wr_en = integrated_neuron && last_layer;
-assign output_buffer_din = {voltage_2,voltage_1};
-
-BRAM_singlePort_readFirst #(
-  .RAM_WIDTH(2*WIDTH),            
-  .RAM_DEPTH(MAX_NEURONS/8),    //ho ipotizzato 1/8 del massimo nunmero di neuroni          
-  .RAM_PERFORMANCE("LOW_LATENCY"), 
-  .INIT_FILE("")          
-)
-	output_buffer
-(
-  .addra(integrated_neurons_cnt),   
-  .addrb(output_buffer_addr),  
-  .dina(output_buffer_din),   
-  .clk(clk),      
-  .wea(output_buffer_wr_en),      
-  .ena(output_buffer_wr_en),      
-  .enb(output_buffer_ren),      
-  .rst(rst),      
-  .regceb(1'b1),
-  
-  .doutb(output_buffer_out)   
-    );
 
 `ifdef CONFIGURABILITY	
 	assign valid = layer_integrated && layer_counter == layers-1;	

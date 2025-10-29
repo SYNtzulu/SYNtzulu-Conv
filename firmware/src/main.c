@@ -103,14 +103,10 @@ static void irq_entry(void)  {
 
 	// tx inference via uart
 	int volatile potential;
-	int i;		
-	for(i=0;i<8*4;i=i+4) {
-			potential = DEV_READ(V_INFERENCE+i); 
-			uart_send(potential>>8);			
-			uart_send(potential);			
-			uart_send(potential>>24);			
-			uart_send(potential>>16);		
-	}
+
+	potential = DEV_READ(V_INFERENCE);		
+	uart_send(potential);
+	
 	DEV_WRITE(VALID_INFERENCE_RST,1);		
 	DEV_WRITE(VALID_INFERENCE_RST,0);
 
@@ -168,14 +164,9 @@ static void read_sample_mem() {
 static void send_inference() {
 	while(DEV_READ(VALID_INFERENCE) == 0);
 	int volatile potential;
-	int i;		
-	for(i=0;i<8*4;i=i+4) {
-			potential = DEV_READ(V_INFERENCE+i); 
-			uart_send(potential>>8);			
-			uart_send(potential);			
-			uart_send(potential>>24);			
-			uart_send(potential>>16);		
-		}
+	potential = DEV_READ(V_INFERENCE);		
+	uart_send(potential);
+	
 	DEV_WRITE(VALID_INFERENCE_RST,1);		
 	DEV_WRITE(VALID_INFERENCE_RST,0);
 }

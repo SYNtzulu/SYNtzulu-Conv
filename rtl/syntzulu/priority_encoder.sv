@@ -106,9 +106,9 @@ module priority_encoder #(
 		if (rst)
 			PE_finish_d <= 0;
 		else if (conv_enable) begin
-			if(en)
+			/*if(en)
 				PE_finish_d <= 0;
-			else
+			else*/
 				PE_finish_d <= PE_finish;
 		end	else
 				PE_finish_d <= 0;

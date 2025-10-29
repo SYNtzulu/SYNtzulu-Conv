@@ -1,6 +1,6 @@
 `define POTENTIAL
 //`define IEEG
-`define EMG
+`define MNIST
 
 `ifdef IEEG
 	`define PATH "ieeg"
@@ -8,6 +8,9 @@
 `elsif EMG
 	 `define PATH "emg"
 	 `define CONFIG_PATH "rtl/config/emg/config.txt"
+`elsif MNIST
+	 `define PATH "mnist"
+	 `define CONFIG_PATH "rtl/config/mnist/config.txt"
 `endif
 
 //`define CONFIGURABILITY

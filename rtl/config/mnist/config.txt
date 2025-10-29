@@ -1,0 +1,6 @@
+`define DW 16
+`define INPUT_CHANNELS 64
+`define INPUT_SPIKE_1 512
+`define N_CLASSES 10
+`define TIME_STEPS 48
+`define BUFFER_WIDTH 4

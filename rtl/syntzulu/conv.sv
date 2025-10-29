@@ -51,18 +51,6 @@ always @(posedge clk)
         en_shift[3] <= en_shift[2];
         en_shift[4] <= en_shift[3];
     end
-/*
-always @(posedge clk)
-    if (rst)
-        dense_en_shift <= 0;
-    else begin
-        dense_en_shift[0] <= dense_enable;
-        dense_en_shift[1] <= dense_en_shift[0];
-        dense_en_shift[2] <= dense_en_shift[1];
-        dense_en_shift[3] <= dense_en_shift[2];
-        dense_en_shift[4] <= dense_en_shift[3];
-    end
-*/
 
 // weights sorting
 wire signed [DATA_WIDTH-1:0] weights_a [SUM-1:0]; 

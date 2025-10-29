@@ -24,6 +24,9 @@ parameter DATA_WIDTH = 25, DEPTH = 256
 )
 (
 input clk, rst,
+input reset_potential,
+input fix_cnt, 
+input [7:0] square_dim_output_feature,
 input [DATA_WIDTH-1:0] DI,
 input rden, wren,
 output [DATA_WIDTH-1:0] DO, 
@@ -37,7 +40,9 @@ reg [clogb2(DEPTH-1)-1:0] wr_cnt;
 always @(posedge clk)
     if(rst || clear_counter)
         rd_cnt <= 0;
-	else if(rden && last_input_feature)
+    else if(fix_cnt)
+        rd_cnt <= rd_cnt - square_dim_output_feature -1;
+	else if(rden)//&& last_input_feature
         if(rd_cnt < DEPTH-1)
             rd_cnt <= rd_cnt + 1'b1;
         else
@@ -46,11 +51,21 @@ always @(posedge clk)
 always @(posedge clk)
     if(rst || clear_counter)
         wr_cnt <= 0;
-    else if(wren && last_input_feature)
+    else if(fix_cnt) begin
+        if(wren)
+            wr_cnt <= wr_cnt - square_dim_output_feature;
+        else 
+            wr_cnt <= wr_cnt - square_dim_output_feature - 1;
+    end
+    else if(wren)//&& last_input_feature
         if(wr_cnt < DEPTH-1)
             wr_cnt <= wr_cnt + 1'b1;
         else
             wr_cnt <= 0;
+
+assign DO = reset_potential ? {DATA_WIDTH{1'b0}} : fifo_out;
+
+wire [DATA_WIDTH-1:0] fifo_out;
 
 BRAM_singlePort_readFirst
 #(
@@ -71,7 +86,7 @@ fifo_ram
   .rst(rst),                       // Port A and B output reset (does not affect memory contents)
   .regceb(1'b1),                   // Port B output register enable
   
-  .doutb(DO)              // Port B RAM output data
+  .doutb(fifo_out)              // Port B RAM output data
     );
 
 
