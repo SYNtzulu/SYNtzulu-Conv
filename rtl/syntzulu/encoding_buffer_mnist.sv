@@ -12,13 +12,8 @@ module encoding_spike_buffer
     
     output valid,
     output signed [DW-1:0] data_out,
-	
-    input external_access_en,
-    input [clogb2(CHANNELS-1)-1:0] external_addr,
+    
     output signed [15:0] external_data_out,
-    input external_access_wren,
-    input signed [15:0] external_data_in,
-
     // Uscite streaming 2-bit
     output reg s1_encoding,
     output reg s2_encoding,
@@ -34,16 +29,14 @@ module encoding_spike_buffer
     always @(posedge clk)
         slow_stream_out <= 1;
 
-    wire [15:0] data_in_mux = external_access_wren ? external_data_in : data_in;
-    wire        wr_en       = en | external_access_wren;
+    wire [15:0] data_in_mux = data_in;
+    wire        wr_en       = en;
     wire [15:0] mem_out;
 
     reg  streaming; 
     reg  [clogb2(CHANNELS_INT-1)-1:0] word_idx;
 
-    wire [clogb2(CHANNELS_INT-1)-1:0] adr =
-        (external_access_en | external_access_wren) ? external_addr :
-        (streaming ? word_idx : pointer);
+    wire [clogb2(CHANNELS_INT-1)-1:0] adr = (streaming ? word_idx : pointer);
 
     BRAM_singlePort_readFirst #(
         .RAM_WIDTH(16),

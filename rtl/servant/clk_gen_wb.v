@@ -30,7 +30,7 @@ generate
 		SB_HFOSC #(.CLKHF_DIV(HFOSC)) 
 			hfosc 
 			( 
-				.CLKHFEN(1'b1), 
+				.CLKHFEN(n_gate_serv), //ho invertito CLKHFEN con CLKHFPU
 				.CLKHFPU(1'b1), 
 				.CLKHF(o_clk) 
 			); 	 

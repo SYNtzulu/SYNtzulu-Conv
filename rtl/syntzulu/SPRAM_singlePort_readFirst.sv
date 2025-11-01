@@ -19,7 +19,7 @@ module SPRAM_singlePort_readFirst #(
   output [RAM_WIDTH-1:0] doutb                   // Port B RAM output data
     );
 
-`ifdef BRAM                     // Condition check for macro 
+`ifdef USEBRAM                     // Condition check for macro 
    
 	BRAM_singlePort_readFirst #(
 	  RAM_WIDTH,                  

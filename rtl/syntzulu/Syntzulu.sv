@@ -42,38 +42,33 @@ module Syntzulu
 	input encoding_bypass,
     
     output valid,
-    output signed [WIDTH-1:0] v,
-    output signed [WIDTH-1:0] f1,
-    output signed [WIDTH-1:0] f2,
-    output signed [WIDTH-1:0] f3,
-    output signed [WIDTH-1:0] f4,
+    output valid_class,
 
-    output signed [WIDTH-1:0] neuron_lp_voltage,
 	output integrated_neuron,
 
     // weight mem 1
-    input [7:0] weight_mem_L1_wren,
+    input weight_mem_L1_wren,
     input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L1_wr_addr,
     input [16-1:0] weight_mem_L1_data_in,
     output [16-1:0] weight_mem_L1_data_out,
     input weight_mem_L1_ena,
 
     // weight mem 2
-    input [7:0] weight_mem_L2_wren,
+    input weight_mem_L2_wren,
     input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L2_wr_addr,
     input [16-1:0] weight_mem_L2_data_in,
     output [16-1:0] weight_mem_L2_data_out,
     input weight_mem_L2_ena,
 
     // weight mem 3
-    input [7:0] weight_mem_L3_wren,
+    input weight_mem_L3_wren,
     input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L3_wr_addr,
     input [16-1:0] weight_mem_L3_data_in,
     output [16-1:0] weight_mem_L3_data_out,
     input weight_mem_L3_ena,
 
     // weight mem 4
-    input [7:0] weight_mem_L4_wren,
+    input weight_mem_L4_wren,
     input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L4_wr_addr,
     input [16-1:0] weight_mem_L4_data_in,
     output [16-1:0] weight_mem_L4_data_out,
@@ -85,17 +80,14 @@ module Syntzulu
 	input wire [1:0] i_spike_mem_rd_en,	
 	input wire [1:0] i_spike_mem_wr_en,
 	input wire [3:0] i_spike_mem_dat,
+
 	// sample mem
 	output wire [15:0] o_sample_mem_dat,	
 	input wire [7:0] i_sample_mem_adr,
 	input wire       i_sample_mem_rd_en,	 
 	input wire        i_sample_mem_wr_en,
 	input wire [15:0] i_sample_mem_dat,
-	// # layers and channels
-	input wire [clogb2(MAX_SYNAPSES-1)-1:0] snn_input_channels, 
-	input wire [clogb2(MAX_NEURONS-1)-1:0] neuron_1, neuron_2, neuron_3, neuron_4, 
-	/*neuron_5, neuron_6, neuron_7, neuron_8,*/
-	input wire [2:0] layers,
+
 	// output buffer access
 	input output_buffer_ren,
 	input [7:0] output_buffer_addr,
@@ -230,10 +222,8 @@ snn_lp_i
     .o_spike_mem_dat(o_spike_mem_dat),
     .i_spike_mem_adr(i_spike_mem_adr),
     .i_spike_mem_rd_en(i_spike_mem_rd_en),
-    .i_spike_mem_wr_en(i_spike_mem_wr_en),
-    .i_spike_mem_dat(i_spike_mem_dat),
-    .snn_input_channels(snn_input_channels),
-    .layers(layers),
+    //.i_spike_mem_wr_en(i_spike_mem_wr_en),
+    //.i_spike_mem_dat(i_spike_mem_dat),
     .voltage_1(voltage_1),
     .voltage_2(voltage_2),
     .s1(s1),
@@ -253,6 +243,7 @@ snn_lp_i
 ///////////////////////////////////////////////////////////////////////////
 
 assign valid = valid_snn;
+assign valid_class = output_buffer_wr_en;
 parameter OUTPUT_BUFFER_DEPTH = MAX_NEURONS/8;
 
 wire output_buffer_wr_en;
@@ -282,6 +273,8 @@ wire [clogb2(OUTPUT_BUFFER_DEPTH)-1:0] output_buffer_wr_addr;
         .output_buffer_wr_en(output_buffer_wr_en),
         .output_buffer_wr_addr(output_buffer_wr_addr)
     );
+
+    assign output_buffer_out = output_buffer_din;
  
     ///////////////////////////////////////////
     //   ___  _   _ _____ ____  _   _ _____  //
@@ -296,7 +289,7 @@ wire [clogb2(OUTPUT_BUFFER_DEPTH)-1:0] output_buffer_wr_addr;
     // |____/ \___/|_|   |_|   |_____|_| \_\ //
     //                                       //
     ///////////////////////////////////////////
-
+/*
     BRAM_singlePort_readFirst #(
     .RAM_WIDTH(BUFFER_WIDTH),            
     .RAM_DEPTH(OUTPUT_BUFFER_DEPTH),    //ho ipotizzato 1/8 del massimo nunmero di neuroni          
@@ -308,7 +301,7 @@ wire [clogb2(OUTPUT_BUFFER_DEPTH)-1:0] output_buffer_wr_addr;
     .addra(output_buffer_wr_addr),   
     .addrb(output_buffer_addr),  
     .dina(output_buffer_din),   
-    .clk(clk),      
+    .clk(clk_snn),      
     .wea(output_buffer_wr_en),      
     .ena(output_buffer_wr_en),      
     .enb(output_buffer_ren),      
@@ -316,7 +309,7 @@ wire [clogb2(OUTPUT_BUFFER_DEPTH)-1:0] output_buffer_wr_addr;
     .regceb(1'b1),
     
     .doutb(output_buffer_out)   
-        );
+        );*/
    
 //  The following function calculates the address width based on specified RAM depth
 function integer clogb2;

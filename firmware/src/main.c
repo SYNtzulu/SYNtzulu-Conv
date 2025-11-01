@@ -1,81 +1,53 @@
-/*
-   
-   This firmware is written for SYNtzulu: A Tiny RISC-V-Controlled SNN
-   Processor for Real-Time Sensor Data Analysis on Low-Power FPGAs.
-
-   Baremetal main program with timer interrupt.
-
-   This firmware demonstrates a baremetal implementation of a simple 
-   RISC-V program with a timer-based interrupt mechanism. It manages 
-   synaptic weight loading, sample loading, inference execution, 
-   and result transmission via UART.
-
-   Designed for educational and experimental purposes.
-*/
-
 #include <stdint.h>
-
-// RISC-V CSR definitions and access classes
 #include "riscv-csr.h"
 #include "riscv-interrupts.h"
 #include "timer.h"
 #include "peripherals.h"
 #include "constants.h"
 
-#define DEV_WRITE(addr, val)    (*((volatile uint32_t *)(addr)) = val)
+#define DEV_WRITE(addr, val)    (*((volatile uint32_t *)(addr)) = (val))
 #define DEV_READ(addr)          (*((volatile uint32_t *)(addr)))
 
-// timer isr
 static void irq_entry(void) __attribute__((naked));
 
-// Load SNN weight or sample
-static void load_data(uint32_t spi_addr, uint32_t snn_addr, uint32_t spi_read_size); // blocking
+static void spi_load_to_mem(uint32_t flash_addr, uint32_t which_mem, uint32_t nbytes);
+static void spi_load_sample(uint32_t flash_addr, uint32_t nbits);
+static void uart_send(uint32_t data);
+static void send_inference(void);
 
-// Load SNN sample (assuming snn_addr and spi_read_size are kept from the settings in main() )
-static void load_sample(uint32_t spi_addr);
-static void load_inference(uint32_t spi_addr);
-
-// Read SNN inference via UART
-static void read_inference(uint32_t inference_addr);
-inline static void uart_send(uint32_t data);
-
-// Read sample mem
-static void read_sample_mem();
-// send inference 
-static void send_inference();
-
-// sample address
 volatile uint32_t sample_addr = 0;
 
-int main(void) {
-	// enable clocks	
-	DEV_WRITE(CLOCK_GATING, 0);     
+int main(void)
+{
+    // 1) accendo clock
+    DEV_WRITE(CLOCK_GATE_CTRL, 0);
 
-	// Global interrupt disable
+    // 2) disabilito interrupt globali
     clear_csr(mstatus, MSTATUS_MIE_BIT_MASK);
     write_csr(mie, 0);
-	
-    // Setup the IRQ handler entry point
+
+    // 3) setto vettore irq
     write_csr(mtvec, ((uint_xlen_t) irq_entry));
-	
-	// wait for uButton to be pressed on iCEBreaker board
-	DEV_WRITE(SERVANT_GPIO_ADDR,0xaaaaaaaa);
-	while(DEV_READ(SERVANT_GPIO_ADDR) & 0xf0000000);
-	DEV_WRITE(SERVANT_GPIO_ADDR,0x55555555);
 
-    // Load synaptic weights from flash
-    load_data(WEIGHT_1_ADDR, 1, WEIGHT_DEPTH);
-    load_data(WEIGHT_2_ADDR, 2, WEIGHT_DEPTH);
-    load_data(WEIGHT_3_ADDR, 3, WEIGHT_DEPTH);
-    load_data(WEIGHT_4_ADDR, 4, WEIGHT_DEPTH);
+    // 4) aspetta bottone
+    DEV_WRITE(SERVANT_GPIO_ADDR, 0xaaaaaaaa);
+    while (DEV_READ(SERVANT_GPIO_ADDR) & 0xf0000000);
+    DEV_WRITE(SERVANT_GPIO_ADDR, 0x55555555);
 
-	// load data of first time step
-	load_data(SAMPLE_ADDR,   5,  CHANNELS);
+    // 5) carico i pesi da flash via SPI
+    spi_load_to_mem(WEIGHT_1_ADDR, 0, WEIGHT_DEPTH*8);   // intmem1
+    spi_load_to_mem(WEIGHT_2_ADDR, 1, WEIGHT_DEPTH*8);   // intmem2
+    spi_load_to_mem(WEIGHT_3_ADDR, 2, WEIGHT_DEPTH*8);   // intmem3
+    spi_load_to_mem(WEIGHT_4_ADDR, 3, WEIGHT_DEPTH*8);   // intmem4
+
+    // 6) carico primo sample nell’input buffer
+    spi_load_sample(SAMPLE_ADDR, CHANNELS*8);
     sample_addr = SAMPLE_ADDR + CHANNELS;
-	
-	// tx first inference
-	send_inference();	
 
+    // 7) mando prima inference
+    send_inference();
+
+    // 8) timer
     // Setup timer at every sample time 
 	mtimer_set_raw_time_cmp(TIME);
     // Enable MIE.MTI
@@ -84,50 +56,47 @@ int main(void) {
     set_csr(mstatus, MSTATUS_MIE_BIT_MASK);
 
     while (1);
-    
     return 0;
 }
 
-static void irq_entry(void)  {	
+static void irq_entry(void)
+{
+    // riattivo clock
+    //DEV_WRITE(CLOCK_GATE_CTRL, 0);
 
-	// enable clocks	
-	DEV_WRITE(CLOCK_GATING, 0);
+    // carico nuovo sample
+    spi_load_sample(sample_addr, CHANNELS*8);
+    sample_addr += CHANNELS;
 
-	// Load new samples
-	DEV_WRITE(SPI_ADDR, sample_addr);
-    DEV_WRITE(SPI_START_ADDR, 1);
-	sample_addr += CHANNELS;
-
-	// wait for inference to be computed
-	while(DEV_READ(VALID_INFERENCE) == 0); 
-
-	// tx inference via uart
-	int volatile potential;
-
-	potential = DEV_READ(V_INFERENCE);		
-	uart_send(potential);
+	send_inference();
 	
-	DEV_WRITE(VALID_INFERENCE_RST,1);		
-	DEV_WRITE(VALID_INFERENCE_RST,0);
+    // turn high-frequency oscillator off
+	//DEV_WRITE(CLOCK_GATE_CTRL, 0x00000008);
+	//DEV_WRITE(CLOCK_GATE_CTRL, 0x00000010);
+	DEV_WRITE(CLOCK_GATE_CTRL, 1);
 
-	// turn high-frequency oscillator off
-	DEV_WRITE(CLOCK_GATING, GATE_SERV);
-	DEV_WRITE(CLOCK_GATING, GATE_GENERAL);
-
-	asm volatile("wfi");
+    asm volatile("wfi");
 }
 
-static void load_data(uint32_t spi_addr, uint32_t snn_addr, uint32_t spi_read_size) {
-    DEV_WRITE(SPI_ADDR, spi_addr);
-    DEV_WRITE(SNN_ADDR, snn_addr);
-    DEV_WRITE(SPI_READ_SIZE_ADDR, spi_read_size);
+static void spi_load_to_mem(uint32_t flash_addr, uint32_t which_mem, uint32_t nbits)
+{
+    DEV_WRITE(SPI_ADDR, flash_addr);
+    DEV_WRITE(SPI_SEL_MEM_OUT, which_mem); // 0..3
+    DEV_WRITE(SPI_READ_SIZE_ADDR, nbits);
     DEV_WRITE(SPI_START_ADDR, 1);
-    while(DEV_READ(SPI_START_ADDR));
+
+    while (DEV_READ(SPI_VALID_ADDR) == 0) { }
+    (void)DEV_READ(SPI_VALID_ADDR);
 }
 
-inline static void load_sample(uint32_t spi_addr) {
-    DEV_WRITE(SPI_ADDR, spi_addr);
+static void spi_load_sample(uint32_t flash_addr, uint32_t nbits)
+{
+    DEV_WRITE(SPI_ADDR, flash_addr);
+    DEV_WRITE(SPI_SEL_MEM_OUT, 4);
+    DEV_WRITE(SPI_READ_SIZE_ADDR, nbits);
     DEV_WRITE(SPI_START_ADDR, 1);
+    while (DEV_READ(SPI_VALID_ADDR) == 0) { }
+    (void)DEV_READ(SPI_VALID_ADDR);
 }
 
 inline static void uart_send(uint32_t data) {
@@ -136,37 +105,16 @@ inline static void uart_send(uint32_t data) {
     while(!DEV_READ(UART_READY_ADDR));
 }
 
-inline static void read_inference(uint32_t inference_addr) {
-    uint16_t inference = (uint16_t)DEV_READ(inference_addr);
-    DEV_WRITE(UART_DATA_ADDR, inference>>8);
-    DEV_WRITE(UART_SEND_ADDR, 1);
-    while(!DEV_READ(UART_READY_ADDR));
-    DEV_WRITE(UART_DATA_ADDR, inference);
-    DEV_WRITE(UART_SEND_ADDR, 1);
-    while(!DEV_READ(UART_READY_ADDR));
+static void send_inference(void)
+{
+	uint32_t s;
+    do { s = DEV_READ(SYNTZULU_CLASS); } 
+    	while ((s & 0x01) == 0);
+    if((s & 0x2) == 0x2){
+    	uint32_t class = s >> 2;
+    	uart_send(class);
+    }
+    DEV_WRITE(SYNTZULU_VALID_RST, 1);
+    DEV_WRITE(SYNTZULU_VALID_RST, 0);
 }
 
-inline static void load_inference(uint32_t inference_addr) {
-    uint16_t inference = (uint16_t)DEV_READ(inference_addr);
-    DEV_WRITE(UART_DATA_ADDR, inference>>8);
-    DEV_WRITE(UART_DATA_ADDR, inference);
-}
-
-static void read_sample_mem() {
-	uint32_t k,dummy; 
-		for(k=0;k<8*4;k=k+4) {
-			dummy = DEV_READ(SAMPLE_MEM+k);
-			uart_send(dummy>>8);
-			uart_send(dummy); 
-		}
-}
-
-static void send_inference() {
-	while(DEV_READ(VALID_INFERENCE) == 0);
-	int volatile potential;
-	potential = DEV_READ(V_INFERENCE);		
-	uart_send(potential);
-	
-	DEV_WRITE(VALID_INFERENCE_RST,1);		
-	DEV_WRITE(VALID_INFERENCE_RST,0);
-}

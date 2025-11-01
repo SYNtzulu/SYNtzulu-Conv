@@ -389,11 +389,6 @@ module service #(
 		.i_sample_mem_wr_en(i_sample_mem_wr_en),
 		.i_sample_mem_dat(i_sample_mem_dat),
 
-		// CONFIGURABILITY
-		.snn_input_channels(snn_input_channels), 
-		.neuron_1(neuron_1), .neuron_2(neuron_2), .neuron_3(neuron_3), .neuron_4(neuron_4),
-		.layers(layers),
-
 		// OUTPUT BUFFER ACCESS
 		
 		.output_buffer_ren(output_buffer_ren),

@@ -82,11 +82,11 @@ wire active_group_out_bin_int;
         .s2_encoding(s2_encoding),
 
         // porte esterne (debug)
-        .external_access_en   (i_sample_mem_rd_en),
-        .external_addr        (i_sample_mem_adr[clogb2(CHANNELS/16)-1:0]),
-        .external_data_out    (o_sample_mem_dat),
-        .external_access_wren (i_sample_mem_wr_en),
-        .external_data_in     (i_sample_mem_dat)
+        //.external_access_en   (i_sample_mem_rd_en),
+        //.external_addr        (i_sample_mem_adr[clogb2(CHANNELS/16)-1:0]),
+        .external_data_out    (o_sample_mem_dat)
+        //.external_access_wren (i_sample_mem_wr_en),
+        //.external_data_in     (i_sample_mem_dat)
     );
 
 `endif 

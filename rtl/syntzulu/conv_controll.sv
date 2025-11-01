@@ -1,4 +1,4 @@
-module conv_controll #(
+/*module conv_controll #(
     parameter MAX_INPUT_FEATURE = 16,
     parameter MAX_KERNEL = 3,
 	parameter MAX_NUMBER_INPUT_FEATURE = 32,
@@ -198,6 +198,12 @@ module conv_controll #(
         else
             output_feature_cnt <= 0;
 
+    always @(posedge clk)
+        if(rst)
+            result <= 0;
+        else
+            result <= row_finish_new_kernel && (input_feature_row_cnt + stride >= dim_input_feature_minus_kernel + 1);
+
     wire [3:0] dim_input_feature_minus_kernel = dim_input_feature - dim_kernel;
     assign input_feature_finish = row_finish_new_kernel && (input_feature_row_cnt + stride >= dim_input_feature_minus_kernel + 1);
     assign all_input_feature_finish = input_feature_finish && (input_feature_cnt == number_input_feature_minus_one);
@@ -359,4 +365,4 @@ module conv_controll #(
         end
     endfunction
 
-endmodule
+endmodule*/

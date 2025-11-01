@@ -10,7 +10,7 @@ module decoding_slot #(
     input  wire s1, s2,
     input  wire last_layer,
     input  wire valid_spike_in,
-    input  wire [clogb2(MAX_NEURONS/2)-1:0] integrated_neurons_cnt,
+    input  wire [clogb2(MAX_NEURONS/2-1)-1:0] integrated_neurons_cnt,
     input  wire integrated_neuron,
     input  wire [15:0] voltage_1, voltage_2,
     output wire reset_potential,
@@ -38,9 +38,11 @@ module decoding_slot #(
         .integrated_neuron_cnt(integrated_neurons_cnt),
         .class_out(class_out),
         .class_valid(class_valid),
-        .first_inference(reset_potential)
+        .first_inference(reset_potential),
+        .inference_cnt(inference_cnt)
     );
 
+    wire [clogb2(INFERENCES):0] inference_cnt;
     assign output_buffer_din = {28'b0,class_out};
     assign output_buffer_wr_en = class_valid;
     assign output_buffer_wr_addr = 0;

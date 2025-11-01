@@ -5,25 +5,30 @@ module servant_tb;
    parameter memfile = "firmware/exe.hex";
    parameter memsize = 3456;
    parameter with_csr = 1;
+   parameter HFOSC = "0b01"; // "0b00" = 48 MHz, "0b01" = 24 MHz, "0b10" = 12 MHz, "0b11" = 6 MHz
 
-   reg wb_clk = 1'b0;
-   reg wb_rst = 1'b1;
+
+   reg i_clk = 1'b0;
+   reg i_rst = 1'b1;
 
    wire q;
    reg [2:0] buttons = 15;
 
-   always  #31 wb_clk <= !wb_clk;
-   initial #62 wb_rst <= 1'b0;
+   always  #5 i_clk <= !i_clk;
+   initial #10 i_rst <= 1'b0;
 
-   //uart_decoder #(2000000) uart_decoder (q);
+   uart_decoder #(2000000) uart_decoder (q);
+
+    wire wb_clk;
+    assign wb_clk = servant_sim_i.soc_i.servant.wb_clk; 
 
    servant_sim
      #(.memfile  (memfile),
        .memsize  (memsize),
        .with_csr (with_csr))
    servant_sim_i
-     (.wb_clk (wb_clk),
-      .wb_rst (wb_rst),
+     (.wb_clk (i_clk),
+      .wb_rst (i_rst),
       .pc_adr (),
       .pc_vld (),
       .q      (q),
@@ -53,8 +58,8 @@ initial begin
 
   #20000
   buttons = 0;
-  #2000000000;
-  //#250000000;
+  //#70000000;
+  #2500000000;
 
   $fclose(f_out);
   $fclose(f_out_target);
@@ -82,12 +87,12 @@ end
   wire [31:0] label;
 
   // prendi i segnali come mi hai indicato
-  assign valid_snn = servant_sim_i.service_i.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.valid_fifo;
-  assign p1        = servant_sim_i.service_i.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.output_new;
-  assign p2        = servant_sim_i.service_i.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.output_new;
+  assign valid_snn = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.valid_fifo;
+  assign p1        = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.output_new;
+  assign p2        = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.output_new;
 
-  assign valid_label = servant_sim_i.service_i.mosquito.output_buffer_wr_en;
-  assign label = servant_sim_i.service_i.mosquito.output_buffer_din;
+  assign valid_label = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.output_buffer_wr_en;
+  assign label = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.output_buffer_din;
 
   // target da file (due numeri per ciascun valid: p1 atteso e p2 atteso)
   integer signed target_p1;

@@ -42,7 +42,7 @@ module integrator_and_fifo #(
         .wren(valid_fifo),
         .DO(output_old),
         .clear_counter(clear_counter),
-        .last_input_feature(conv_enable ? last_input_feature : 1)
+        .last_input_feature(conv_enable ? last_input_feature : 1'b1)
     ); 
         
     // wait fifo output

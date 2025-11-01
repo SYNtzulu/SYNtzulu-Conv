@@ -9,15 +9,15 @@ netlist:
 	
 build:
 	cd firmware && make -B
-	yosys -p "synth_ice40 -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-	nextpnr-ice40 --up5k --seed 16 --threads $$(nproc) --package sg48 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc --report timing.rpt -l output/nextpnr.log -v 
+	yosys -p "synth_ice40 -abc9 -top soc -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
+	nextpnr-ice40 --up5k --seed 99 --freq 24 --threads $$(nproc) --package sg48 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v 
 	icepack output/$(filename).asc output/$(filename).bin -s
 	
 build_stat:
 	cd firmware && make -B
 	yosys -p "read_verilog -sv rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/*; \
-	          hierarchy -top service; \
-	          synth_ice40 -top service -dsp -abc9 -noflatten; \
+	          hierarchy -top soc; \
+	          synth_ice40 -top soc -dsp -abc9 -noflatten; \
 	          tee -o output/module_stats.txt stat" \
 	     -l output/yosys_stat.log
 
@@ -28,20 +28,21 @@ build_best:
 	cd firmware && make -B
 	@mkdir -p logs output/best
 	@rm -f output/best_freq.txt
-	yosys -p "synth_ice40 -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
+	yosys -p "synth_ice40 -abc9 -top soc -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
 	@echo "Seed | Fmax (MHz)" > output/best_freq.txt
 	@for SEED in $$(seq 1 100); do \
 		echo ">>> Trying seed $$SEED..."; \
 		nextpnr-ice40 --up5k --package sg48 \
 			--json output/$(filename).json \
 			--pcf $(pcf_file) \
-			-l output/best/nextpnr/nextpnr_seed$$SEED.log \
 			--asc output/best/$(filename)_seed$$SEED.asc \
 			--threads $$(nproc) \
+			--freq 24 \
 			--seed $$SEED --timing-allow-fail \
 			> logs/nextpnr_seed$$SEED.log 2>&1; \
-		FREQ=$$(grep "Max frequency for clock" logs/nextpnr_seed$$SEED.log | \
-			sed -nE "s/.*clock  '[^']+': ([0-9]+\.[0-9]+) MHz.*/\1/p" | tail -n 1); \
+		FREQ=$$(grep -E "Max frequency for clock 'servant\.wb_clk'" logs/nextpnr_seed$$SEED.log | \
+			sed -E "s/.*: ([0-9]+\.[0-9]+) MHz.*/\1/" | tail -n 1); \
+		[ -z "$$FREQ" ] && FREQ=$$(grep -Eo "([0-9]+\.[0-9]+) MHz" logs/nextpnr_seed$$SEED.log | tail -n 1 | cut -d' ' -f1); \
 		[ -z "$$FREQ" ] && FREQ="0.00"; \
 		echo "Seed $$SEED => $$FREQ MHz"; \
 		echo "$$SEED | $$FREQ" >> output/best_freq.txt; \
@@ -51,7 +52,6 @@ build_best:
 	cp output/best/$(filename)_seed$$BEST_SEED.asc output/$(filename).asc; \
 	echo "==> Best seed: $$BEST_SEED"; \
 	icepack output/$(filename).asc output/$(filename).bin -s
-
 
 build_no_flatten:
 	cd firmware && make -B

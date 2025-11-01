@@ -34,7 +34,7 @@ module instruction_decoder #(
     assign bit_for_spike          = instr[30:28];
 
     // === SOLO CONV ===
-    assign number_input_feature   = instr[75:71] + 1;   
+    assign number_input_feature   = instr[75:71];   
     assign number_output_feature  = instr[68:64] + 1;   
     assign size_input_feature     = instr[30:27] + 1;   
     assign kernel_size            = instr[77:76];

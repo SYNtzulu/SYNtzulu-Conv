@@ -58,11 +58,11 @@ module layer_lp
     input en_conv_spike,
     input en_conv,
     
-    input [7:0] weight_mem_L1_wren,
+    input weight_mem_L1_wren,
     input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L1_wr_addr,
     input [15:0] weight_mem_L1_data_in,
     input weight_mem_L1_ena,
-    input [7:0] weight_mem_L2_wren,
+    input weight_mem_L2_wren,
     input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L2_wr_addr,
     input [15:0] weight_mem_L2_data_in,
     input weight_mem_L2_ena,
@@ -100,7 +100,7 @@ module layer_lp
         .dina(weight_mem_L1_data_in),       // Port A RAM input data, driven by axi bus
         //.dinb({64{1'b0}}),                        // write port PL side not used
         .clk(clk),                       // Clock
-        .wea(weight_mem_L1_wren[0]),           // Port A write enable
+        .wea(weight_mem_L1_wren),           // Port A write enable
         //.web(1'b0),                      // write port PL side not used
         .ena(weight_mem_L1_ena),         // Port A RAM Enable, for additional power savings, disable port when not in use
         .enb(1'b1),                      // Port B RAM Enable, for additional power savings, disable port when not in use
@@ -123,7 +123,7 @@ module layer_lp
         .dina(weight_mem_L2_data_in),       // Port A RAM input data, driven by axi bus
         //.dinb({64{1'b0}}),                        // write port PL side not used
         .clk(clk),                       // Clock
-        .wea(weight_mem_L2_wren[0]),           // Port A write enable
+        .wea(weight_mem_L2_wren),           // Port A write enable
         //.web(1'b0),                      // write port PL side not used
         .ena(weight_mem_L2_ena),                      // Port A RAM Enable, for additional power savings, disable port when not in use
         .enb(1'b1),                      // Port B RAM Enable, for additional power savings, disable port when not in use

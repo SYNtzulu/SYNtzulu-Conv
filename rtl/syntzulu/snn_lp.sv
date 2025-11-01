@@ -43,39 +43,33 @@ module snn_lp
 	output integrated_neuron,
 
     // weight mem 1
-    input [7:0] weight_mem_L1_wren,
+    input weight_mem_L1_wren,
     input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L1_wr_addr,
     input [16-1:0] weight_mem_L1_data_in,
     input weight_mem_L1_ena,
 
     // weight mem 2
-    input [7:0] weight_mem_L2_wren,
+    input weight_mem_L2_wren,
     input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L2_wr_addr,
     input [16-1:0] weight_mem_L2_data_in,
     input weight_mem_L2_ena,
 
     // weight mem 3
-    input [7:0] weight_mem_L3_wren,
+    input weight_mem_L3_wren,
     input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L3_wr_addr,
     input [16-1:0] weight_mem_L3_data_in,
     input weight_mem_L3_ena,
 
     // weight mem 4
-    input [7:0] weight_mem_L4_wren,
+    input weight_mem_L4_wren,
     input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L4_wr_addr,
     input [16-1:0] weight_mem_L4_data_in,
     input weight_mem_L4_ena,
 
-	//spike mem 1 & 2
+	//spike mem 1 & 2 non utilizzati
 	output wire [7:0] o_spike_mem_dat,
 	input wire [7:0] i_spike_mem_adr,
 	input wire [1:0] i_spike_mem_rd_en,
-	input wire [1:0] i_spike_mem_wr_en,
-	input wire [3:0] i_spike_mem_dat,
-
-	// # layers and channels
-	input wire [clogb2(MAX_SYNAPSES-1)-1:0] snn_input_channels,
-	input wire [2:0] layers,
 
 	// output buffer access
     output wire signed [WIDTH-1:0] voltage_1,
@@ -504,7 +498,9 @@ always @(posedge clk)
     else if (((layer_counter != 0 && layer_integrated_dd)||(spike_written_counter == 1 && spike_written_d)) && conv_enable)
         en_conv <= 1;
 
-conv_controll #(
+wire [12:0] base_address_weights_conv = BASE_ADDRESS_WEIGHTS*layer_counter;
+
+conv_controll_2 #(
     .MAX_KERNEL(MAX_KERNEL),
     .MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
     .MAX_NUMBER_INPUT_FEATURE(MAX_NUMBER_INPUT_FEATURE),
@@ -520,13 +516,13 @@ conv_controll #(
     .stride(stride),
     
     .dim_input_feature(size_input_feature),
-    .dim_kernel(kernel_size),
+    //.dim_kernel(kernel_size),
     .dim_output_feature(dim_output_feature),
     .input_feature_row(spike_mem_out_16),
     .number_input_feature(number_input_feature),
     .number_output_feature(number_output_feature),
     .first_input_feature(first_input_feature),
-    .base_address_weights(BASE_ADDRESS_WEIGHTS*layer_counter),
+    .base_address_weights(base_address_weights_conv),
     .weights_buffer_ready(weights_buffer_ready),
     .input_feature_finish(input_feature_finish),
     
@@ -540,7 +536,7 @@ conv_controll #(
     .spike_check(spike_check),
     .write_en_weight_buffer(write_en_weight_buffer),
     .weight_rd_addr(weight_rd_addr_conv),
-    .en_L1(en_L1),
+    //.en_L1(en_L1),
     .en_L2(en_L2),
     .last_input_feature(last_input_feature),
     .spike_mem_rd_addr(spike_mem_rd_addr_conv),
@@ -823,11 +819,8 @@ wire [3:0] spike_mem_out_2;
 wire [clogb2(MAX_SYNAPSES_CONV/4-1)-1:0] spike_rd_addr_2;
 
 wire [clogb2(SPIKE_MEM_DEPTH)-1:0] spike_rd_addr_1_mux, spike_rd_addr_2_mux, spike_wr_addr_mux;
-assign spike_rd_addr_1_mux = i_spike_mem_rd_en[0] ? i_spike_mem_adr : 
-                            conv_enable ? spike_mem_rd_addr_conv : spike_rd_addr_1;
-assign spike_rd_addr_2_mux = i_spike_mem_rd_en[1] ? i_spike_mem_adr : 
-                            conv_enable ? spike_mem_rd_addr_conv : spike_rd_addr_2;
-assign o_spike_mem_dat = {spike_mem_out_4,spike_mem_out_4};
+assign spike_rd_addr_1_mux = conv_enable ? spike_mem_rd_addr_conv : spike_rd_addr_1;
+assign spike_rd_addr_2_mux = conv_enable ? spike_mem_rd_addr_conv : spike_rd_addr_2;
 
 assign spike_wr_addr_mux = spike_wr_addr;
 
@@ -886,14 +879,8 @@ assign last_address = (neuron_cnt << bit_for_spike) + spike_rd_addr;
 assign weight_rd_addr_dense = {1'b0, layer_counter, last_address};
 
 
-`ifdef CONFIGURABILITY	
-	assign valid = layer_integrated && layer_counter == layers-1;	
-	assign valid_spike = valid12 && layer_counter == layers-1;
-`else 
-	assign valid = (layer_integrated && last_layer);
-	assign valid_spike = valid12 && last_layer;
-`endif
-	
+assign valid = (layer_integrated && last_layer);
+assign valid_spike = valid12 && last_layer;
 
 //  The following function calculates the address width based on specified RAM depth
 	function integer clogb2;

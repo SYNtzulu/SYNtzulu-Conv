@@ -36,28 +36,6 @@ module spi_master(
 
 	assign SPI_SS = spi_ss_reg;
 
-	/*initial begin
-		SPI_SCK = 0;
-		valid = 0;
-
-		counter_clk = 0;
-		counter_send = 0;
-		state = IDLE;
-		read_addr_reg = 0;
-		end_transaction <= 0;
-
-		//bunch of commands to read status registers as well as the flash from the datasheet
-		read_cmd = 8'h03; //read
-		write_en_cmd = 8'h06; // page program
-		write_cmd = 8'h02; // page program
-
-		SPI_MOSI = 0;
-		spi_ss_reg = 1; //active low
-		rd_data = 0;
-		
-		words_to_read_reg <= 0;
-	end*/
-
 	always @(posedge clk)
 	begin
 		if(reset == 1) begin

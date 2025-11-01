@@ -8,7 +8,7 @@ module mux_buffer#(
     input [1:0] stride,
     input input_feature_ready,
     input conv_enable,
-    input [3:0] dim_input_feature_minus_kernel,
+    input [3:0] last_state,
     input wire [MAX_INPUT_FEATURE*MAX_KERNEL-1:0] input_feature_row,
     output wire [MAX_KERNEL*MAX_KERNEL-1:0] output_kernel,
     output row_finish
@@ -33,7 +33,7 @@ module mux_buffer#(
         .rst(rst),
         .stride(stride),
         .conv_enable(conv_enable),
-        .dim_input_feature_minus_kernel(dim_input_feature_minus_kernel),
+        .last_state(last_state),
         .input_feature_ready(input_feature_ready),
         .sel_A(sel_A),
         .sel_B(sel_B),

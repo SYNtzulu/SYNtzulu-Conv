@@ -23,7 +23,7 @@ module servant_sim
    */
 	
 	wire SPI_SS, SPI_MOSI, SPI_MISO, SPI_CLK;
-
+/*
    service   
 	`ifndef PSIM	
 		#(.SIM(1), .PLL("NONE"),
@@ -41,6 +41,24 @@ module servant_sim
 				.i_flash_miso(SPI_MISO),
 				.o_txd(q)
 			); // change con service interface
+*/
+	soc   
+	`ifndef PSIM
+		#(.memfile  (memfile),
+		   .memsize  (memsize)
+		  )
+	`endif
+	soc_i(	.i_clk(),
+				.i_rst(wb_rst),
+				.led(),
+				.buttons(buttons),
+				.o_flash_ss(SPI_SS),
+				.o_flash_sck(SPI_CLK),
+				.o_flash_mosi(SPI_MOSI),
+				.i_flash_miso(SPI_MISO),
+				.o_txd(q)
+			); // change con service interface
+
 
    //assign pc_adr = dut.wb_ibus_adr;
    //assign pc_vld = dut.wb_ibus_ack;

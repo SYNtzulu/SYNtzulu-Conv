@@ -8,7 +8,7 @@ module controll_mux#(
 	input [1:0] stride,
 	input input_feature_ready,
 	input conv_enable,
-    input [3:0] dim_input_feature_minus_kernel,
+    input [3:0] last_state,
 	output wire [2:0] sel_A,
 	output wire [2:0] sel_B,
 	output wire [2:0] sel_C,
@@ -21,7 +21,7 @@ module controll_mux#(
 	reg [3:0] state;
 	reg [3:0] next_state;
 
-	assign row_finish = (next_state >= dim_input_feature_minus_kernel - stride + 1) && en && input_feature_ready;
+	assign row_finish = (next_state >= last_state) && en && input_feature_ready;
 
 	always @(posedge clk) begin
 		if (rst) begin
@@ -30,7 +30,7 @@ module controll_mux#(
 		end else if(conv_enable) begin
 			if (en && input_feature_ready) begin
 				// Calcola prossimo stato
-				next_state = (state >= dim_input_feature_minus_kernel - stride + 1) ? 0 : state + stride;
+				next_state = (state >= last_state) ? 0 : state + stride;
 				// Aggiorna stato
 				state <= next_state;
 			end

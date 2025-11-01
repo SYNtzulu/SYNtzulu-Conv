@@ -20,7 +20,7 @@ parameter TRIM_EN = "0b0";
 parameter CLKHF_DIV = "0b11"; // "0b00" = 48 MHz, "0b01" = 24 MHz, "0b10" = 12 MHz, "0b11" = 6 MHz 
 reg clk = 0; 
 
-always @(*) begin
+always 
 	if(CLKHF_DIV == "0b00") 
 		#10.42 clk <= ~clk | ~CLKHFEN; 
 	else 
@@ -34,7 +34,6 @@ always @(*) begin
 	else 
 	if(CLKHF_DIV == "0b11") 
 		#83.3 clk <= ~clk | ~CLKHFEN; 
-end
 assign CLKHF = clk; 
 
 

@@ -9,16 +9,17 @@ module decoding_slot_mnist #(
     input  wire s1,
     input  wire s2,
     input  wire valid_spike_in,
-    input  wire [clogb2(MAX_NEURONS/2)-1:0] integrated_neuron_cnt,
+    input  wire [clogb2(MAX_NEURONS/2-1)-1:0] integrated_neuron_cnt,
     output reg  [3:0] class_out,        // classe predetta (0–9)
     output reg        class_valid,      // 1 = classe valida
-    output reg        first_inference
+    output reg        first_inference,
+    output reg [clogb2(INFERENCES):0] inference_cnt
 );
 
-    localparam integer SC_WIDTH = clogb2(INFERENCES);
+    localparam integer SC_WIDTH = 4; //clogb2(INFERENCES);
 
     reg [SC_WIDTH-1:0] spike_count [0:N_CLASSES-1];
-    reg [clogb2(INFERENCES):0] inference_cnt;
+     
 
     // registro dei valori massimi in tempo reale
     reg [3:0] max_idx;
@@ -48,7 +49,6 @@ module decoding_slot_mnist #(
             class_valid <= 0;
         end else if (valid_spike_in) begin
             // calcola gli indici delle due classi collegate ai due segnali di spike
-            // usa {integrated_neuron_cnt, bit} come nel tuo codice originale
             
             idx1 = {integrated_neuron_cnt, 1'b0};
             idx2 = {integrated_neuron_cnt, 1'b1};
@@ -68,7 +68,7 @@ module decoding_slot_mnist #(
                 end
             end
 
-            // quando finisce l’inferenza → emette il risultato e resetta i contatori
+            // quando finisce l’inferenza, emette il risultato e resetta i contatori
             if ((inference_cnt == INFERENCES-1) && (integrated_neuron_cnt == N_CLASSES/2 -1)) begin
                 class_out   <= max_idx;
                 class_valid <= 1'b1;
@@ -103,102 +103,3 @@ module decoding_slot_mnist #(
             first_inference <= (inference_cnt == 0);
 
 endmodule
-
-
-/*module decoding_slot_mnist #(
-    parameter MAX_NEURONS = 128,
-    parameter N_CLASSES   = 10,
-    parameter INFERENCES  = 48
-)(
-    input  wire                 clk,
-    input  wire                 rst,
-    input  wire                 valid_snn,
-    input  wire                 s1,
-    input  wire                 s2,
-    input  wire                 valid_spike_in,
-    input  wire [clogb2(MAX_NEURONS/2)-1:0] integrated_neuron_cnt,
-    output reg  [3:0]           class_out,         // classe predetta (0-9)
-    output reg                  class_valid,       // 1 classe valida
-    output reg                  first_inference
-);
-
-    localparam integer SC_WIDTH = clogb2(INFERENCES);
-
-    reg [SC_WIDTH-1:0] spike_count [0:N_CLASSES-1];
-
-    reg [clogb2(INFERENCES):0] inference_cnt;
-
-    integer i;
-
-    reg [3:0] max_idx;
-    reg [SC_WIDTH:0] max_val;
-
-    task decode_class;
-        integer c;
-        begin
-            max_val = spike_count[0];
-            max_idx = 0;
-            for (c = 0; c < N_CLASSES; c = c + 1)
-                if (spike_count[c] > max_val) begin
-                    max_val = spike_count[c];
-                    max_idx = c[3:0];
-                end
-        end
-    endtask
-
-    always @(posedge clk) begin
-        if (rst) begin
-            for (i = 0; i < N_CLASSES; i = i + 1)
-                spike_count[i] <= 0;
-            class_out        <= 0;
-            class_valid      <= 0;
-        end
-        else if (valid_spike_in) begin
-            if (s1)
-                spike_count[{integrated_neuron_cnt, 1'b0}] <= spike_count[{integrated_neuron_cnt, 1'b0}] + 1;
-            if (s2)
-                spike_count[{integrated_neuron_cnt, 1'b1}] <= spike_count[{integrated_neuron_cnt, 1'b1}] + 1;
-
-            if ((inference_cnt == INFERENCES-1)&&(integrated_neuron_cnt == N_CLASSES/2 -1)) begin
-                class_valid <= 1'b1;
-                //decode_class();
-                class_out   <= max_idx;
-
-                for (i = 0; i < N_CLASSES; i = i + 1)
-                    spike_count[i] <= 0;
-            end
-            else begin
-                class_valid     <= 1'b0;
-            end
-        end
-        else begin
-            class_valid <= 1'b0;
-        end
-    end
-
-    always @(posedge clk)
-        if(rst)
-            inference_cnt <= 0;
-        else if(valid_snn) begin
-            if (inference_cnt == INFERENCES-1)
-                inference_cnt <= 0;
-            else
-                inference_cnt   <= inference_cnt + 1;
-        end
-
-    always @(posedge clk)
-        if(rst)
-            first_inference <= 1;
-        else 
-            first_inference <= inference_cnt == 0;
-
-    function integer clogb2;
-        input integer depth;
-        begin
-            depth = depth - 1;
-            for (clogb2 = 0; depth > 0; clogb2 = clogb2 + 1)
-                depth = depth >> 1;
-        end
-    endfunction
-
-endmodule*/
