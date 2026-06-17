@@ -10,7 +10,7 @@
 	 `define CONFIG_PATH "rtl/config/emg/config.txt"
 `elsif MNIST
 	 `define PATH "mnist"
-	 `define CONFIG_PATH "rtl/config/mnist/config.txt"
+	 `define CONFIG_PATH "mnist/config.txt"
 `endif
 
 //`define CONFIGURABILITY

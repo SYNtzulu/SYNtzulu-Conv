@@ -35,12 +35,12 @@ module syntzulu_tb_mnist_snn_lp;
     // ========================================================================
 
     // ---- Path dei file (relativi alla root del progetto) -------------------
-    localparam FLASH_FILE   = "sim/mem/mnist/flash.txt";                                  // pesi (formato $readmemh)
-    localparam S1_FILE      = "mnist/input_even.txt";                                     // bit s1_encoding (uno per riga)
-    localparam S2_FILE      = "mnist/input_odd.txt";                                      // bit s2_encoding (uno per riga)
-    localparam INSTR_FILE   = "flash/src/mnist/instruction.hex";                          // istruzioni
-    localparam TARGET_FILE  = "sim/target/mnist/snn_inference.txt";                       // riferimento p1/p2
-    localparam OUTPUT_FILE  = "sim/results/mnist/syntzulu_tb_mnist_snn_lp_inference.txt"; // dump correnti HW
+    localparam FLASH_FILE   = "mnist/flash.txt";                            // pesi (formato $readmemh)
+    localparam S1_FILE      = "mnist/input_even.txt";                       // bit s1_encoding (uno per riga)
+    localparam S2_FILE      = "mnist/input_odd.txt";                        // bit s2_encoding (uno per riga)
+    localparam INSTR_FILE   = "mnist/instruction.hex";                      // istruzioni
+    localparam TARGET_FILE  = "mnist/snn_inference.txt";                    // riferimento p1/p2
+    localparam OUTPUT_FILE  = "mnist/syntzulu_tb_mnist_snn_lp_inference.txt"; // dump correnti HW
     localparam VCD_FILE     = "syntzulu_tb_mnist_snn_lp.vcd";           // waveform
 
     // ---- Parametri snn_lp (specchio servant_syntzulu MNIST) ---------------

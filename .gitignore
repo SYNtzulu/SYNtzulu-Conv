@@ -13,6 +13,9 @@ emg/
 # Binari compilati della simulazione (rigenerabili)
 rtl_sim_snn_lp
 
+# Output della simulazione (rigenerato a ogni run)
+mnist/syntzulu_tb_mnist_snn_lp_inference.txt
+
 # File temporanei
 *.tmp
 *.swp
