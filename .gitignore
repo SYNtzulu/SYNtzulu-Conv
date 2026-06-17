@@ -17,7 +17,7 @@ rtl_sim_snn_lp
 */inference_out.txt
 
 # File del dataset estratti dallo zip ma NON usati dal testbench snn_lp
-# (rigenerati da `make prepare_mnist`; tracciati solo gli 8 file essenziali)
+# (rigenerati da `make prepare_data`; tracciati solo gli 8 file essenziali)
 */current_buffer_*.txt
 */current_partials_*.txt
 */weights_*.txt

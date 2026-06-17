@@ -5,30 +5,26 @@
 `include `CONFIG_PATH
 
 // ============================================================================
-//  syntzulu_tb_mnist_snn_lp
+//  syntzulu_tb_snn_lp
 //  ----------------------------------------------------------------------------
-//  Testbench stand-alone equivalente a syntzulu_tb_mnist.sv ma che istanzia
-//  SOLO il modulo snn_lp (niente Syntzulu top, niente encoder).
+//  Testbench stand-alone che istanzia SOLO il modulo snn_lp (niente Syntzulu
+//  top, niente encoder). Indipendente dal dataset: la cartella dei dati e'
+//  scelta dalla macro `PATH in rtl/define.v.
 //
-//  Differenze rispetto al TB completo:
-//     • niente encoding_slot: gli ingressi s1_encoding / s2_encoding vengono
-//       letti direttamente da due file di testo, un bit per riga:
-//          sim/mem/mnist/input_even.txt  -> s1_encoding
-//          sim/mem/mnist/input_odd.txt   -> s2_encoding
-//       (formato $readmemb: token '0' / '1' separati da whitespace)
-//     • input_buffer_valid è pilotato dal TB tenendolo alto per la durata
-//       dello streaming del frame, come fa valid_encoding nell'encoder MNIST
-//       reale (encoding_spike_buffer). Il rising edge genera
-//       start_instruction dentro snn_lp.
+//     • gli ingressi s1_encoding / s2_encoding sono letti direttamente da due
+//       file di testo, un bit per riga (formato $readmemb):
+//          `PATH/input_even.txt  -> s1_encoding
+//          `PATH/input_odd.txt   -> s2_encoding
+//     • input_buffer_valid e' tenuto alto dal TB per tutta la durata dello
+//       streaming del frame; il rising edge genera start_instruction in snn_lp.
 //
-//  I 4 banchi pesi vengono caricati con lo stesso pattern del TB completo a
-//  partire da sim/mem/mnist/flash.txt (offset W1..W4). Le memorie di
-//  decay/threshold sono autoinizializzate via $readmemh dentro layer_lp
-//  (path cablati in snn_lp.sv: "mnist/decay_thr_1.txt" / "..._2.txt"),
-//  quindi la sim DEVE essere lanciata dalla root del progetto.
+//  I 4 banchi pesi sono caricati da `PATH/flash.txt (offset W1..W4). Le memorie
+//  decay/threshold sono autoinizializzate via $readmemh dentro layer_lp dai
+//  file `PATH/decay_thr_1.txt / _2.txt (DATA_DIR passato a snn_lp = `PATH).
+//  La sim DEVE essere lanciata dalla root del progetto.
 // ============================================================================
 
-module syntzulu_tb_mnist_snn_lp;
+module syntzulu_tb_snn_lp;
 
     // ========================================================================
     //  PARAMETRI DI CONFIGURAZIONE
@@ -43,9 +39,9 @@ module syntzulu_tb_mnist_snn_lp;
     localparam INSTR_FILE   = {`PATH, "/instruction.hex"};   // istruzioni
     localparam TARGET_FILE  = {`PATH, "/snn_inference.txt"}; // riferimento p1/p2
     localparam OUTPUT_FILE  = {`PATH, "/inference_out.txt"}; // dump correnti HW
-    localparam VCD_FILE     = "syntzulu_tb_mnist_snn_lp.vcd";           // waveform
+    localparam VCD_FILE     = "syntzulu_tb_snn_lp.vcd";                 // waveform
 
-    // ---- Parametri snn_lp (specchio servant_syntzulu MNIST) ---------------
+    // ---- Parametri snn_lp (specchio della configurazione servant_syntzulu) -
     localparam DW               = `DW;
     localparam WIDTH            = 16;
     localparam CHANNELS         = `INPUT_CHANNELS; // 32
@@ -402,7 +398,7 @@ module syntzulu_tb_mnist_snn_lp;
 
     initial begin
         $dumpfile(VCD_FILE);
-        $dumpvars(10, syntzulu_tb_mnist_snn_lp);
+        $dumpvars(10, syntzulu_tb_snn_lp);
 
         f_tgt = $fopen(TARGET_FILE, "r");
         f_out = $fopen(OUTPUT_FILE, "w");
