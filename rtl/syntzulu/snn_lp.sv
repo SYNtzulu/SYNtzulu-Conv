@@ -26,7 +26,10 @@ module snn_lp
 	parameter WEIGHTS_FILE_4 = "/flash/src/weights_4.txt",
 
 	parameter WEIGHT_DEPTH_12 = 8192,
-	parameter WEIGHT_DEPTH_34 = 8192
+	parameter WEIGHT_DEPTH_34 = 8192,
+
+	// Cartella dati per le memorie decay/threshold (override dal testbench)
+	parameter DATA_DIR = "mnist"
 )
     (
     // input
@@ -247,7 +250,7 @@ layer_lp
 	.MAX_DECAY(MAX_DECAY),
 	.MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
 	.DEPTH_FIFO(DEPTH_FIFO),
-	.DECAY_THR_FILE ("mnist/decay_thr_1.txt"),
+	.DECAY_THR_FILE ({DATA_DIR, "/decay_thr_1.txt"}),
 
 	.LAYERS(LAYERS),
 
@@ -334,7 +337,7 @@ layer_lp
 	.MAX_DECAY(MAX_DECAY),
 	.MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
 	.DEPTH_FIFO(DEPTH_FIFO),
-	.DECAY_THR_FILE ("mnist/decay_thr_2.txt"),
+	.DECAY_THR_FILE ({DATA_DIR, "/decay_thr_2.txt"}),
 
 	.LAYERS(LAYERS),
 

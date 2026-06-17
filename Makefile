@@ -22,6 +22,7 @@ MNIST_ZIP ?= /media/sf_cartella_condivisa_OPENHW/mnist.zip
 prepare_mnist:
 	rm -rf mnist
 	unzip $(MNIST_ZIP) -d ./
+	rm    $(MNIST_ZIP) 
 
 # Compila ed esegue la simulazione del testbench snn_lp standalone (MNIST).
 simulate_syntzulu_snn_lp:

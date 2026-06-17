@@ -13,8 +13,18 @@ emg/
 # Binari compilati della simulazione (rigenerabili)
 rtl_sim_snn_lp
 
-# Output della simulazione (rigenerato a ogni run)
-mnist/syntzulu_tb_mnist_snn_lp_inference.txt
+# Output della simulazione (rigenerato a ogni run, in qualunque cartella dataset)
+*/inference_out.txt
+
+# File del dataset estratti dallo zip ma NON usati dal testbench snn_lp
+# (rigenerati da `make prepare_mnist`; tracciati solo gli 8 file essenziali)
+*/current_buffer_*.txt
+*/current_partials_*.txt
+*/weights_*.txt
+*/address.txt
+*/samples.txt
+*/constants.h
+*/input_vec.txt
 
 # File temporanei
 *.tmp

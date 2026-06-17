@@ -35,12 +35,14 @@ module syntzulu_tb_mnist_snn_lp;
     // ========================================================================
 
     // ---- Path dei file (relativi alla root del progetto) -------------------
-    localparam FLASH_FILE   = "mnist/flash.txt";                            // pesi (formato $readmemh)
-    localparam S1_FILE      = "mnist/input_even.txt";                       // bit s1_encoding (uno per riga)
-    localparam S2_FILE      = "mnist/input_odd.txt";                        // bit s2_encoding (uno per riga)
-    localparam INSTR_FILE   = "mnist/instruction.hex";                      // istruzioni
-    localparam TARGET_FILE  = "mnist/snn_inference.txt";                    // riferimento p1/p2
-    localparam OUTPUT_FILE  = "mnist/syntzulu_tb_mnist_snn_lp_inference.txt"; // dump correnti HW
+    //  Tutti i path dei dati derivano da `PATH (definito in rtl/define.v):
+    //  basta cambiare quella macro per puntare a un'altra cartella dataset.
+    localparam FLASH_FILE   = {`PATH, "/flash.txt"};         // pesi (formato $readmemh)
+    localparam S1_FILE      = {`PATH, "/input_even.txt"};    // bit s1_encoding (uno per riga)
+    localparam S2_FILE      = {`PATH, "/input_odd.txt"};     // bit s2_encoding (uno per riga)
+    localparam INSTR_FILE   = {`PATH, "/instruction.hex"};   // istruzioni
+    localparam TARGET_FILE  = {`PATH, "/snn_inference.txt"}; // riferimento p1/p2
+    localparam OUTPUT_FILE  = {`PATH, "/inference_out.txt"}; // dump correnti HW
     localparam VCD_FILE     = "syntzulu_tb_mnist_snn_lp.vcd";           // waveform
 
     // ---- Parametri snn_lp (specchio servant_syntzulu MNIST) ---------------
@@ -138,6 +140,7 @@ module syntzulu_tb_mnist_snn_lp;
         .MAX_THRESHOLD   (MAX_THRESHOLD),
         .INSTR_WIDTH     (INSTR_WIDTH),
         .INSTR_FILE      (INSTR_FILE),
+        .DATA_DIR        (`PATH),  // cartella dati per decay_thr_*.txt (da `PATH)
         .WEIGHTS_FILE_1  (""),    // weight mem caricate a runtime via porte
         .WEIGHTS_FILE_2  (""),
         .WEIGHTS_FILE_3  (""),
