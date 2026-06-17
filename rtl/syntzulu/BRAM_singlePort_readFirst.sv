@@ -45,7 +45,7 @@ module BRAM_singlePort_readFirst #(
 
   generate
 	  genvar idx;
-	  for(idx = 0; idx < 16; idx = idx+1) begin
+	  for(idx = 0; idx < RAM_DEPTH; idx = idx+1) begin
 		wire [RAM_WIDTH-1:0] tmp;
 		assign tmp = ram[idx];
 	  end

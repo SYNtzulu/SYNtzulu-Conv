@@ -12,10 +12,10 @@ module servant_syntzulu#(
     parameter N_CLASSES = 10,
     parameter TIME_STEPS = 48,
 	
-	parameter MAX_NEURONS = 128,
-	parameter MAX_SYNAPSES = 128,
+    parameter MAX_NEURONS = 128,
+    parameter MAX_SYNAPSES = 256,
 
-    parameter LAYERS = 4, //è pari alla profondità della memoria delle istruzioni
+    parameter LAYERS = 8, //è pari alla profondità della memoria delle istruzioni
     parameter MAX_DECAY = 4096,
     parameter MAX_THRESHOLD = 65536,
 
@@ -55,6 +55,10 @@ module servant_syntzulu#(
     input wire         wen_intmem4_spi,
     input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_intmem4_spi,
     input wire [15:0] wr_data_intmem4_spi,
+/*
+    input wire         wen_instr,
+    input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_instr,
+    input wire [15:0] wr_data_instr,*/
 
     // SPI signals
     input  wire [15:0]  i_sample_mem_spi,
@@ -85,10 +89,21 @@ module servant_syntzulu#(
 	  end
    end
 
-    assign o_cpu_ack = (i_cpu_adr_d == 8'h01) ? o_cpu_ack_d : o_cpu_ack_int ;	
+    assign o_cpu_ack = (i_cpu_adr_d == 8'h01) ? o_cpu_ack_d : o_cpu_ack_int;
+/*
+    reg instr_free;
+
+    always @(posedge i_wb_clk)
+        if (i_wb_rst)
+            instr_free <= 1;
+        else begin
+            if (wen_instr)
+                instr_free <= 0;
+            else if (new_instruction)
+                instr_free <= 1;
+        end
     
-    always @(posedge i_wb_clk) begin
-            //////// OUTPUT BUFFER ///////
+    */always @(posedge i_wb_clk) begin
         if (i_cpu_cyc)
 			case (i_cpu_adr[19:16])
                 4'h0: begin							// class , valid_class, valid_inference
@@ -96,33 +111,66 @@ module servant_syntzulu#(
                 end
 
                 4'h1: begin							// valid inference reset
-                    o_cpu_rdt <= {31'b0,snn_valid_rst};
-                    if (i_cpu_cyc & o_cpu_ack) begin
+                    //o_cpu_rdt <= {31'b0,snn_valid_rst};
+                    if (o_cpu_ack) begin
                         snn_valid_rst <= i_cpu_dat[0];
                     end
-                end
+                end/*
+                4'h3: begin
+                    rd_en_spike_mem <= i_cpu_cyc && !i_cpu_we;
+                    i_spike_mem_adr <= i_cpu_adr[14:2];
+                    if (o_cpu_ack) begin
+                        o_cpu_rdt <= spike_mem;
+                    end
+                end*/
+                //4'h2: o_cpu_rdt <= {31'b0, instr_free};
                 default:
                     o_cpu_rdt <= 32'h0;
             endcase
         end
+/*
+    reg rd_en_spike_mem_d;
+    reg rd_en_spike_mem;
+    initial rd_en_spike_mem = 0;
+    always @(posedge i_wb_clk)
+        if(i_wb_rst | snn_valid_rst) begin
+            rd_en_spike_mem_d <= 0;
+        end
+        else begin
+            rd_en_spike_mem_d <= rd_en_spike_mem;
+        end
 
+    reg [31:0] spike_mem;
+    always @(posedge i_wb_clk)
+        if(i_wb_rst | snn_valid_rst) begin
+            spike_mem <= 32'b0;
+        end
+        else begin
+            if(rd_en_spike_mem_d)
+                spike_mem <= o_spike_mem_dat;
+        end
+    
+    wire [31:0] o_spike_mem_dat;
+	reg [7:0] i_spike_mem_adr;
+	wire [1:0] i_spike_mem_rd_en = {rd_en_spike_mem_d,rd_en_spike_mem_d};
+	wire [1:0] i_spike_mem_wr_en;
+	wire [3:0] i_spike_mem_dat;
+*/
     wire acc_snn_valid;
     wire valid_class;
     reg acc_snn_valid_mp;
     reg valid_class_reg;
     always @(posedge i_wb_clk)
-        if(i_wb_rst | snn_valid_rst)
+        if(i_wb_rst | snn_valid_rst) begin
             acc_snn_valid_mp <= 1'b0;
-        else
+            valid_class_reg <= 1'b0;
+        end
+        else begin
             if(acc_snn_valid)
                 acc_snn_valid_mp <= 1'b1;
-    
-    always @(posedge i_wb_clk)
-        if(i_wb_rst | snn_valid_rst)
-            valid_class_reg <= 1'b0;
-        else
             if(valid_class)
-                valid_class_reg <= 1'b1;
+                valid_class_reg <= 1'b1;    
+        end
 
     Syntzulu #(
 		.ENCODING_BYPASS(ENCODING_BYPASS),
@@ -171,6 +219,7 @@ module servant_syntzulu#(
         
         .valid  (acc_snn_valid),
         .valid_class (valid_class),
+        //.new_instruction(new_instruction),
         
         .weight_mem_L1_wren     (wen_intmem1_spi),
         .weight_mem_L1_wr_addr  (wr_addr_intmem1_spi),
@@ -191,18 +240,19 @@ module servant_syntzulu#(
         .weight_mem_L4_wr_addr  (wr_addr_intmem4_spi),
         .weight_mem_L4_data_in  (wr_data_intmem4_spi),
         .weight_mem_L4_ena      (wen_intmem4_spi),
-		
+/*
+        .wen_instr              (wen_instr),
+        .wr_addr_instr          (wr_addr_instr),
+        .wr_data_instr          (wr_data_instr),
+
 		// ACCESSIBILITY
-		.o_spike_mem_dat(),
-		.i_spike_mem_adr(),
-		.i_spike_mem_rd_en(),
-
-		.o_sample_mem_dat(),	
-		.i_sample_mem_adr(),
-		.i_sample_mem_rd_en(),
-		.i_sample_mem_wr_en(),
-		.i_sample_mem_dat(),
-
+		
+        .o_spike_mem_dat(o_spike_mem_dat),
+        .i_spike_mem_adr(i_spike_mem_adr),
+        .i_spike_mem_rd_en(i_spike_mem_rd_en),
+        .i_spike_mem_wr_en(i_spike_mem_wr_en),
+        .i_spike_mem_dat(i_spike_mem_dat),
+*/
 		// OUTPUT BUFFER ACCESS
 		
 		.output_buffer_ren(1'b1),

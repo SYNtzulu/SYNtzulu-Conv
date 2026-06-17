@@ -5,7 +5,7 @@ module soc #(
 	parameter memfile = "firmware/exe.hex",
     parameter memsize =  4096,
     parameter pClockFrequency = 24_000_000, // 12 MHz
-    parameter pBaudRate = 4000000, // 3 MHz
+    parameter pBaudRate = 4000000, // 4 MHz
     parameter UART_QUEUE = 1
 )
 (

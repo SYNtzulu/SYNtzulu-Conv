@@ -12,6 +12,9 @@
 // SYNTzulu
 #define SYNTZULU_CLASS          0x40100000   // o_data_last_layer__valid_class__valid_inference
 #define SYNTZULU_VALID_RST      0x40110000   // reset del valid
+#define SYNTZULU_INSTR_FREE   	0x40120000  // new instruction
+#define SYNTZULU_SPIKE_MEM   	0x40130000  
+#define SYNTZULU_SAMPLE_MEM   	0x40140000  
 
 // EXTERNAL Memory
 #define EXTERNAL_MEM_ADDR       (0x60000000) // Used for testing purposes

@@ -4,6 +4,7 @@
 #include "weights_2.txt"
 #include "weights_3.txt"
 #include "weights_4.txt"
+//#include "instruction.txt"
 #include "samples.txt"
 
 //signed char samples [] = {0,1};
@@ -27,8 +28,12 @@ int main(void)
     file = fopen("to_flash/weights_4.bin", "wb");
     fwrite(weights_4, sizeof(weights_4), 1, file);
     fclose(file);
+    
+    //file = fopen("to_flash/instruction.bin", "wb");
+    //fwrite(instruction, sizeof(instruction), 1, file);
+    //fclose(file);
 
-	file = fopen("to_flash/sample.bin", "wb");
+    file = fopen("to_flash/sample.bin", "wb");
     fwrite(samples, sizeof(samples), 1, file);
     fclose(file);
 

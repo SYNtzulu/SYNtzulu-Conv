@@ -72,7 +72,7 @@ wire active_group_out_bin_int;
         .DW       (DW)
     )encoding_spike_buffer_i (
         .clk    (clk),
-        .rst    (rst | inference_done),    // reset sincrono per ogni inferenza
+        .rst    (rst),    // reset sincrono per ogni inferenza
         .en     (en),
         .data_in(data_in),
 		.valid(input_buffer_valid),

@@ -10,6 +10,9 @@ emg/
 *.out
 *.dump
 
+# Binari compilati della simulazione (rigenerabili)
+rtl_sim_snn_lp
+
 # File temporanei
 *.tmp
 *.swp

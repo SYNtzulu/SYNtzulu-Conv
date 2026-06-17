@@ -3,7 +3,8 @@
 module integrator_and_fifo #(
     parameter DEPTH = 256,
     parameter WIDTH = 25,
-    parameter MAX_INPUT_FEATURE = 16
+    parameter MAX_INPUT_FEATURE = 16,
+    parameter DECAY_THR_FILE = ""
     )(
     input clk, rst, en, detection,
     input reset_potential,
@@ -11,7 +12,7 @@ module integrator_and_fifo #(
     input [7:0] square_dim_output_feature,
     input conv_enable,
     input dense_enable,
-    input polling_spike_enable,
+    input pooling_spike_enable,
     input first_input_feature,
     input [13:0] decay,
     input [WIDTH-1:0] stimolo,
@@ -21,12 +22,43 @@ module integrator_and_fifo #(
     output valid,
     output spike,
     output [WIDTH-1:0] output_new,
-	input clear_counter,
-    input [clogb2(MAX_INPUT_FEATURE-1)-1:0] dim_output_feature 
+    input clear_counter,
+    
+    input layer_integrated,
+    input recurrency_next,
+    input recurrency,
+    input output_feature_integrated
     );
     
     wire [WIDTH-1:0] output_old;
-    
+    wire [31:0] dec_thr;
+	
+	
+    wire [13:0] dec;
+    wire [WIDTH-1:0] thr;
+
+    // DECAY AND THRESHOLD PER LAYER
+    dec_thr_mem #(
+        .DATA_WIDTH(32), 
+        .DEPTH(DEPTH),
+        .DECAY_THR_FILE(DECAY_THR_FILE)
+    ) dec_thr_mem_i (
+        .clk(clk),
+        .rst(rst),
+
+        .rden(output_feature_integrated),
+        .DO(dec_thr),
+        .clear_counter(clear_counter),
+
+        .layer_integrated(layer_integrated),
+        .recurrency_next(recurrency_next)
+    ); 
+
+	
+	assign dec = dec_thr[31:16];
+	assign thr   = dec_thr[15: 0];
+
+
     // FIFO
     bram_fifo #(
         .DATA_WIDTH(WIDTH), 
@@ -42,7 +74,10 @@ module integrator_and_fifo #(
         .wren(valid_fifo),
         .DO(output_old),
         .clear_counter(clear_counter),
-        .last_input_feature(conv_enable ? last_input_feature : 1'b1)
+        .last_input_feature(conv_enable ? last_input_feature : 1'b1),
+        .layer_integrated(layer_integrated),
+        .recurrency_next(recurrency_next),
+        .recurrency(recurrency)
     ); 
         
     // wait fifo output
@@ -68,37 +103,20 @@ module integrator_and_fifo #(
         .en(en_d),
         .detection(detection),
         .conv_enable(conv_enable),
-        .polling_spike_enable(polling_spike_enable),
+        .pooling_spike_enable(pooling_spike_enable),
         .first_input_feature(first_input_feature),
         .output_old(output_old),
-        .decay(decay),
+        .decay(dec),
         .stimolo(stimolo_d),
-        .threshold(threshold),
+        .threshold(thr),
         .valid(valid),
         .valid_fifo(valid_fifo),
         .spike(spike),
-        .output_new(output_new)
+        .output_new(output_new),
+        .recurrency(recurrency),
+        .recurrency_next(recurrency_next)
     );
-/*
-        // INTEGRATOR
-    integrator_old #(
-        .WIDTH(WIDTH)
-    ) integrator_i (
-        .clk(clk),
-        .rst(rst),
-        .en(en_d),
-        .detection(detection),
-        .output_old(output_old),
-        .decay(decay),
-        .first_input_feature(first_input_feature),
-        .conv_enable(conv_enable),
-        .stimolo(stimolo_d),
-        .threshold(threshold),
-        .valid(valid),
-        .valid_fifo(valid_fifo),
-        .spike(spike),
-        .output_new(output_new)
-    ); */
+
 
 
     ////////////////////////////

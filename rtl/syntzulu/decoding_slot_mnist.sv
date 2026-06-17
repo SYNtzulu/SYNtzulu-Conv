@@ -19,9 +19,7 @@ module decoding_slot_mnist #(
     localparam integer SC_WIDTH = 4; //clogb2(INFERENCES);
 
     reg [SC_WIDTH-1:0] spike_count [0:N_CLASSES-1];
-     
-
-    // registro dei valori massimi in tempo reale
+    
     reg [3:0] max_idx;
     reg [SC_WIDTH:0] max_val;
 
@@ -48,7 +46,6 @@ module decoding_slot_mnist #(
             class_out   <= 0;
             class_valid <= 0;
         end else if (valid_spike_in) begin
-            // calcola gli indici delle due classi collegate ai due segnali di spike
             
             idx1 = {integrated_neuron_cnt, 1'b0};
             idx2 = {integrated_neuron_cnt, 1'b1};

@@ -31,7 +31,12 @@ input [DATA_WIDTH-1:0] DI,
 input rden, wren,
 output [DATA_WIDTH-1:0] DO, 
 input clear_counter,
-input last_input_feature
+input last_input_feature,
+input layer_integrated,
+input recurrency_next,
+input recurrency,
+input [15:0] reset_recurrency
+
     );
 
 reg [clogb2(DEPTH-1)-1:0] rd_cnt;
@@ -40,9 +45,11 @@ reg [clogb2(DEPTH-1)-1:0] wr_cnt;
 always @(posedge clk)
     if(rst || clear_counter)
         rd_cnt <= 0;
+    else if (layer_integrated && recurrency_next) //added for recurrent layer
+    	rd_cnt <= rd_cnt - reset_recurrency;
     else if(fix_cnt)
         rd_cnt <= rd_cnt - square_dim_output_feature -1;
-	else if(rden)//&& last_input_feature
+	else if(rden)
         if(rd_cnt < DEPTH-1)
             rd_cnt <= rd_cnt + 1'b1;
         else
@@ -51,19 +58,22 @@ always @(posedge clk)
 always @(posedge clk)
     if(rst || clear_counter)
         wr_cnt <= 0;
+    else if (layer_integrated && recurrency_next)
+    	wr_cnt <= wr_cnt - reset_recurrency;
+    	
     else if(fix_cnt) begin
         if(wren)
             wr_cnt <= wr_cnt - square_dim_output_feature;
         else 
             wr_cnt <= wr_cnt - square_dim_output_feature - 1;
     end
-    else if(wren)//&& last_input_feature
+    else if(wren)
         if(wr_cnt < DEPTH-1)
             wr_cnt <= wr_cnt + 1'b1;
         else
             wr_cnt <= 0;
 
-assign DO = reset_potential ? {DATA_WIDTH{1'b0}} : fifo_out;
+assign DO = (reset_potential && !recurrency) ? {DATA_WIDTH{1'b0}} : fifo_out;
 
 wire [DATA_WIDTH-1:0] fifo_out;
 

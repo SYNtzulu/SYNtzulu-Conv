@@ -14,33 +14,28 @@ module encoding_spike_buffer
     output signed [DW-1:0] data_out,
     
     output signed [15:0] external_data_out,
-    // Uscite streaming 2-bit
+
     output reg s1_encoding,
     output reg s2_encoding,
     output valid_encoding
 );
-    // Con DW=15 usi half-rate -> 32 word da 16 bit se CHANNELS=64
-    localparam CHANNELS_INT = CHANNELS/2;
 
-    reg [clogb2(CHANNELS_INT-1)-1:0] pointer;
+
+    reg [clogb2(CHANNELS-1)-1:0] pointer;
     reg read_flag;
-
-    reg slow_stream_out;
-    always @(posedge clk)
-        slow_stream_out <= 1;
 
     wire [15:0] data_in_mux = data_in;
     wire        wr_en       = en;
     wire [15:0] mem_out;
 
     reg  streaming; 
-    reg  [clogb2(CHANNELS_INT-1)-1:0] word_idx;
+    reg  [clogb2(CHANNELS-1)-1:0] word_idx;
 
-    wire [clogb2(CHANNELS_INT-1)-1:0] adr = (streaming ? word_idx : pointer);
+    wire [clogb2(CHANNELS-1)-1:0] adr = (streaming ? word_idx : pointer);
 
     BRAM_singlePort_readFirst #(
         .RAM_WIDTH(16),
-        .RAM_DEPTH(CHANNELS_INT),
+        .RAM_DEPTH(CHANNELS),
         .RAM_PERFORMANCE("LOW_LATENCY"),
         .INIT_FILE("")
     )
@@ -50,7 +45,7 @@ module encoding_spike_buffer
         .dina(data_in_mux),
         .clk(clk),
         .wea(wr_en),
-        .ena(1'b1),
+        .ena(wr_en),
         .enb(1'b1),
         .rst(rst),
         .regceb(1'b1),
@@ -60,7 +55,7 @@ module encoding_spike_buffer
     always @(posedge clk) begin
         if (rst) begin
             read_flag         <= 1'b0;
-        end else if (wr_en && pointer == CHANNELS_INT-1) begin
+        end else if (wr_en && pointer == CHANNELS-1) begin
             read_flag         <= 1'b1;
         end else if (stream_done) begin
             read_flag         <= 1'b0;
@@ -71,7 +66,7 @@ module encoding_spike_buffer
         if (rst)
             pointer <= 0;
         else if (wr_en) begin
-            if (pointer < CHANNELS_INT-1)
+            if (pointer < CHANNELS-1)
                 pointer <= pointer + 1'b1;
             else
                 pointer <= 0;
@@ -89,7 +84,7 @@ module encoding_spike_buffer
             valid_encoding_real_dd <= valid_encoding_real_d;
         end
 
-    assign valid_encoding = valid_encoding_real_dd || valid_encoding_real_d;
+    assign valid_encoding = valid_encoding_real_d;
 
     reg stream_done;
 
@@ -105,7 +100,15 @@ module encoding_spike_buffer
         else
             bit_pair_idx_d <= bit_pair_idx;
 
-    reg [2:0] bit_pair_idx, bit_pair_idx_d;      // 0..7 (8 coppie per word)
+    reg [2:0] bit_pair_idx, bit_pair_idx_d;
+
+    reg streaming_d;
+
+    always @(posedge clk)
+        if(rst)
+            streaming_d <= 0;
+        else
+            streaming_d <= streaming;
 
     always @(posedge clk) begin
         if (rst) begin
@@ -117,7 +120,7 @@ module encoding_spike_buffer
             s2_encoding    <= 0;
             stream_done    <= 0;
         end else begin
-            stream_done <= 0;
+            stream_done    <= 0;
 
             // Avvio streaming quando il buffer è pieno
             if (read_flag && !stream_done && !streaming) begin
@@ -125,20 +128,17 @@ module encoding_spike_buffer
                 word_idx       <= 0;
                 bit_pair_idx   <= 0;
                 end
-            if (streaming) begin
+            if (streaming_d) begin
                 valid_encoding_real <= 1'b1;
 
-                // Lettura dal MSB: coppie (15,14), (13,12), ... (1,0)
                 s1_encoding <= mem_out[15 - 2*bit_pair_idx_d];
                 s2_encoding <= mem_out[14 - 2*bit_pair_idx_d];
 
-                // Avanza la coppia
                 if (bit_pair_idx == 3'd7) begin
                     bit_pair_idx <= 0;
 
-                    // Avanza alla prossima word
-                    if (word_idx < CHANNELS_INT-1) begin
-                        word_idx  <= word_idx + 1'b1; // cambia indirizzo BRAM ora
+                    if (word_idx < CHANNELS-1) begin
+                        word_idx  <= word_idx + 1'b1;
                     end else begin
                         // Finite tutte le word
                         streaming      <= 1'b0;

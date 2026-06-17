@@ -7,12 +7,14 @@ module layer_lp
     parameter MAX_NEURONS = 256,
     parameter MAX_DECAY = 4096,
     parameter MAX_INPUT_FEATURE = 16,
+    parameter DEPTH_FIFO = 1024,
     
     parameter LAYERS = 4, //è pari alla profondità della memoria delle istruzioni
 
     parameter WEIGHTS_FILE_1 = "weights_1.txt",
-	  parameter WEIGHTS_FILE_2 = "weights_2.txt",
-    parameter WEIGHT_DEPTH = 8192
+    parameter WEIGHTS_FILE_2 = "weights_2.txt",
+    parameter WEIGHT_DEPTH = 8192,
+    parameter DECAY_THR_FILE = ""
     )
     (
     input clk, rst,
@@ -27,7 +29,6 @@ module layer_lp
 
     //fifo module
     input set_address,
-    input [clogb2(MAX_INPUT_FEATURE-1)-1:0] dim_output_feature ,
 
     input write_en_weight_buffer,
     input read_en_weight_buffer,
@@ -51,7 +52,7 @@ module layer_lp
     //input valid_spike_conv,
     input conv_enable,
     input dense_enable,
-    input polling_spike_enable,
+    input pooling_spike_enable,
     input first_input_feature,
     input last_input_feature,
 
@@ -68,7 +69,16 @@ module layer_lp
     input weight_mem_L2_ena,
     output [7:0] weight_debug,
     output weight_en_debug,
-    output weights_buffer_ready
+    output weights_buffer_ready,
+
+    input layer_integrated,
+    input recurrency_next,
+    input recurrency,
+    input output_feature_integrated,
+    input [clogb2(MAX_INPUT_FEATURE)-1:0] num_input_feature,
+    input [11:0] M,
+    input [15:0] reset_recurrency,
+    input first_layer_no_spike
     );
 
     assign weight_en_debug = en;
@@ -91,7 +101,7 @@ module layer_lp
 
     SPRAM_singlePort_readFirst #(
         .RAM_WIDTH(16),                  // Specify RAM data width
-        .RAM_DEPTH(WEIGHT_DEPTH),             // Specify RAM depth (number of entries)
+        .RAM_DEPTH(4096),             // Specify RAM depth (number of entries)
         .RAM_PERFORMANCE("HIGH_PERFORMANCE"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
         .INIT_FILE(WEIGHTS_FILE_1)             // Specify name/location of RAM initialization file if using one (leave blank if not)
     )weight_mem_1(
@@ -114,7 +124,7 @@ module layer_lp
 
     SPRAM_singlePort_readFirst #(
         .RAM_WIDTH(16),                  // Specify RAM data width
-        .RAM_DEPTH(WEIGHT_DEPTH),             // Specify RAM depth (number of entries)
+        .RAM_DEPTH(4096),             // Specify RAM depth (number of entries)
         .RAM_PERFORMANCE("HIGH_PERFORMANCE"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
         .INIT_FILE(WEIGHTS_FILE_2)             // Specify name/location of RAM initialization file if using one (leave blank if not)
     )weight_mem_2(
@@ -211,11 +221,12 @@ module layer_lp
     //////////////////////////////////////////////
 
     neuron_lp #(
-        .DEPTH(512),
+        .DEPTH(DEPTH_FIFO),
         .WIDTH(WIDTH),
         .WEIGHTS(WEIGHT),
         .MAX_DECAY(MAX_DECAY),
-        .MAX_INPUT_FEATURE(MAX_INPUT_FEATURE)
+        .MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
+        .DECAY_THR_FILE(DECAY_THR_FILE)
     )neuron_lp_i(
         .clk(clk), .rst(rst), .en(acc_clear_and_go),    
         .reset_potential(reset_potential),        
@@ -224,18 +235,26 @@ module layer_lp
         .new_inference_start(new_inference_start),
         .conv_enable(conv_enable),
         .dense_enable(dense_enable),
-        .polling_spike_enable(polling_spike_enable),
+        .pooling_spike_enable(pooling_spike_enable),
         .first_input_feature(first_input_feature), 
         .last_input_feature(last_input_feature),
         .synaptic_current(stimulus),
         .detection(detection),
         .current_decay(current_decay), .voltage_decay(voltage_decay),
         .threshold(threshold),
-        .dim_output_feature(dim_output_feature),
 
         .spike_s(spike_out),
         .voltage_ready(integrated_neuron),
-        .voltage(neuron_lp_voltage)
+        .voltage(neuron_lp_voltage),
+        
+	.layer_integrated(layer_integrated),
+	.recurrency_next(recurrency_next),
+	.recurrency(recurrency),
+	.output_feature_integrated(output_feature_integrated),
+	.num_input_feature(num_input_feature),
+	.M(M),
+	.reset_recurrency(reset_recurrency),
+	.first_layer_no_spike(first_layer_no_spike)
     );
 
 

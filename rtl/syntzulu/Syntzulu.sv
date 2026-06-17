@@ -4,35 +4,35 @@ module Syntzulu
 #(
 
 	parameter ENCODING_BYPASS = 0,
-    parameter CHANNELS = 128,
-    parameter ORDER = 2,
-    parameter WINDOW = 8192,
-    parameter REF_PERIOD = 16,
-    parameter DW = 15,
-    
-    parameter WIDTH = 16,
-    parameter N_CLASSES = 10,
-    parameter TIME_STEPS = 48,
+	parameter CHANNELS = 128,
+	parameter ORDER = 2,
+	parameter WINDOW = 8192,
+	parameter REF_PERIOD = 16,
+	parameter DW = 15,
+
+	parameter WIDTH = 16,
+	parameter N_CLASSES = 10,
+	parameter TIME_STEPS = 48,
 
 	parameter MAX_SYNAPSES = 128,
 	parameter MAX_NEURONS = 128,
 
-    parameter LAYERS = 4, //è pari alla profondità della memoria delle istruzioni
-    parameter MAX_DECAY = 4096,
-    parameter MAX_THRESHOLD = 65536,
+	parameter LAYERS = 2, //è pari alla profondità della memoria delle istruzioni
+	parameter MAX_DECAY = 4096,
+	parameter MAX_THRESHOLD = 65536,
 
-    parameter INSTR_WIDTH = 64,
-    parameter INSTR_FILE = "",
+	parameter INSTR_WIDTH = 64,
+	parameter INSTR_FILE = "",
 
-    parameter WEIGHTS_FILE_1 = "",
-    parameter WEIGHTS_FILE_2 = "",
-    parameter WEIGHTS_FILE_3 = "",
-    parameter WEIGHTS_FILE_4 = "",
-    
-    parameter WEIGHT_DEPTH_12 = 8192,
-    parameter WEIGHT_DEPTH_34 = 8192,
+	parameter WEIGHTS_FILE_1 = "",
+	parameter WEIGHTS_FILE_2 = "",
+	parameter WEIGHTS_FILE_3 = "",
+	parameter WEIGHTS_FILE_4 = "",
 
-    parameter BUFFER_WIDTH = 32
+	parameter WEIGHT_DEPTH_12 = 8192,
+	parameter WEIGHT_DEPTH_34 = 8192,
+
+	parameter BUFFER_WIDTH = 32
 )
 (
     input clk_enc, clk_snn, rst,
@@ -45,6 +45,7 @@ module Syntzulu
     output valid_class,
 
 	output integrated_neuron,
+    //output new_instruction,
 
     // weight mem 1
     input weight_mem_L1_wren,
@@ -73,9 +74,13 @@ module Syntzulu
     input [16-1:0] weight_mem_L4_data_in,
     output [16-1:0] weight_mem_L4_data_out,
     input weight_mem_L4_ena,
+/*
+    input wire wen_instr,
+    input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_instr,
+    input wire [15:0] wr_data_instr,
 	
 	//spike mem 1 & 2
-	output wire [7:0] o_spike_mem_dat,
+	output wire [31:0] o_spike_mem_dat,
 	input wire [7:0] i_spike_mem_adr,
 	input wire [1:0] i_spike_mem_rd_en,	
 	input wire [1:0] i_spike_mem_wr_en,
@@ -86,7 +91,7 @@ module Syntzulu
 	input wire [7:0] i_sample_mem_adr,
 	input wire       i_sample_mem_rd_en,	 
 	input wire        i_sample_mem_wr_en,
-	input wire [15:0] i_sample_mem_dat,
+	input wire [15:0] i_sample_mem_dat,*/
 
 	// output buffer access
 	input output_buffer_ren,
@@ -203,6 +208,7 @@ snn_lp_i
     .spike_out(spike_out_snn),
     .reset_potential(reset_potential),
     .integrated_neuron(integrated_neuron),
+    //.new_instruction(new_instruction),
     .weight_mem_L1_wren(weight_mem_L1_wren),
     .weight_mem_L1_wr_addr(weight_mem_L1_wr_addr),
     .weight_mem_L1_data_in(weight_mem_L1_data_in),
@@ -219,11 +225,16 @@ snn_lp_i
     .weight_mem_L4_wr_addr(weight_mem_L4_wr_addr),
     .weight_mem_L4_data_in(weight_mem_L4_data_in),
     .weight_mem_L4_ena(weight_mem_L4_ena),
+/*
+    .wen_instr(wen_instr),
+    .wr_addr_instr(wr_addr_instr),
+    .wr_data_instr(wr_data_instr),
+
     .o_spike_mem_dat(o_spike_mem_dat),
     .i_spike_mem_adr(i_spike_mem_adr),
     .i_spike_mem_rd_en(i_spike_mem_rd_en),
-    //.i_spike_mem_wr_en(i_spike_mem_wr_en),
-    //.i_spike_mem_dat(i_spike_mem_dat),
+    .i_spike_mem_wr_en(i_spike_mem_wr_en),
+    .i_spike_mem_dat(i_spike_mem_dat),*/
     .voltage_1(voltage_1),
     .voltage_2(voltage_2),
     .s1(s1),

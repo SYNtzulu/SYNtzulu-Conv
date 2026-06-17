@@ -8,12 +8,12 @@ module instruction_memory #(
     input  rst,
     input  new_inference_start,
     input  en,
-    output reg [INSTR_WIDTH-1:0] instruction
+    (* keep *) output reg [INSTR_WIDTH-1:0] instruction
 );
 
     wire [15:0] bram_out_data;
     reg  [15:0] bram_out;
-    reg  [INSTR_WIDTH-1:0] instr_parts; 
+    (* keep *) reg  [INSTR_WIDTH-1:0] instr_parts; 
     reg  [2:0] read_cnt;
 
     localparam ADDR_WIDTH = clogb2(INSTR_DEPTH-1);
@@ -29,6 +29,9 @@ module instruction_memory #(
 
     reg [1:0] state, next_state;
     reg first;
+
+    initial instruction = 80'h0000000000000000;
+    initial instr_parts = 80'h0000000000000000;
 
     // BRAM 16-bit wide
     SB_RAM40_4K #(
@@ -88,7 +91,7 @@ module instruction_memory #(
             addr          <= 0;
             instr_counter <= 0;
             first         <= 1;
-            instr_parts   <= 0;
+            instr_parts   <= 80'b0;
         end else begin
             case (state)
                 IDLE: begin
@@ -118,6 +121,11 @@ module instruction_memory #(
                               instr_counter_plus_five : 0;
                     first <= 0;
                 end
+                default:begin
+                    read_cnt <= 0;
+                    addr     <= instr_counter + 1;
+                end
+
             endcase
         end
     end

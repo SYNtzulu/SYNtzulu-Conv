@@ -6,6 +6,7 @@ module controll_mux#(
 	input en,
 	input rst,
 	input [1:0] stride,
+	input padding,
 	input input_feature_ready,
 	input conv_enable,
     input [3:0] last_state,
@@ -21,7 +22,16 @@ module controll_mux#(
 	reg [3:0] state;
 	reg [3:0] next_state;
 
-	assign row_finish = (next_state >= last_state) && en && input_feature_ready;
+	assign row_finish = (next_state <= stride - padding) && en && input_feature_ready;
+
+	reg input_feature_ready_d;
+	always @(posedge clk) begin
+		if(rst) begin
+			input_feature_ready_d <= 0;
+		end else begin
+			input_feature_ready_d <= input_feature_ready;
+		end
+	end
 
 	always @(posedge clk) begin
 		if (rst) begin
@@ -30,34 +40,63 @@ module controll_mux#(
 		end else if(conv_enable) begin
 			if (en && input_feature_ready) begin
 				// Calcola prossimo stato
-				next_state = (state >= last_state) ? 0 : state + stride;
+				next_state = (state <= stride - padding) ? last_state : state - stride;
 				// Aggiorna stato
 				state <= next_state;
 			end
+			else if (input_feature_ready && !input_feature_ready_d) begin
+				// Se input_feature_ready è appena diventato alto, aggiorna stato
+				state <= last_state;
+				next_state <= last_state;
+			end
 		end
 		else begin
-			state <= 0;
-			next_state <= 0;
+			state <= last_state;
+			next_state <= last_state;
 		end
 	end
+/*
 
 	assign {sel_A, sel_B, sel_C, sel_k0, sel_k1, sel_k2} = 
-		(next_state == 0) ? {3'd5, 3'd4, 3'd4, 2'd2, 2'd1, 2'd0} :
-		(next_state == 1) ? {3'd4, 3'd4, 3'd4, 2'd1, 2'd0, 2'd2} :
-		(next_state == 2) ? {3'd4, 3'd3, 3'd4, 2'd0, 2'd2, 2'd1} :
-		(next_state == 3) ? {3'd4, 3'd3, 3'd3, 2'd2, 2'd1, 2'd0} :
-		(next_state == 4) ? {3'd3, 3'd3, 3'd3, 2'd1, 2'd0, 2'd2} :
-		(next_state == 5) ? {3'd3, 3'd2, 3'd3, 2'd0, 2'd2, 2'd1} :
-		(next_state == 6) ? {3'd3, 3'd2, 3'd2, 2'd2, 2'd1, 2'd0} :
-		(next_state == 7) ? {3'd2, 3'd2, 3'd2, 2'd1, 2'd0, 2'd2} :
-		(next_state ==8 ) ? {3'd2, 3'd1, 3'd2, 2'd0, 2'd2, 2'd1} :
-		(next_state ==9 ) ? {3'd2, 3'd1, 3'd1, 2'd2, 2'd1, 2'd0} :
-		(next_state ==10 ) ? {3'd1, 3'd1, 3'd1, 2'd1, 2'd0, 2'd2} :
-		(next_state ==11 ) ? {3'd1, 3'd0, 3'd1, 2'd0, 2'd2, 2'd1} :
-		(next_state ==12 ) ? {3'd1, 3'd0, 3'd0, 2'd2, 2'd1, 2'd0} :
-		(next_state ==13 ) ? {3'd0, 3'd0, 3'd0, 2'd1, 2'd0, 2'd2} :
-		                     15'd0;
+		(next_state == 0) ? {3'd5, 3'd4, 3'd4, 2'd3, 2'd2, 2'd1} :
+		(next_state == 1) ? {3'd5, 3'd4, 3'd4, 2'd2, 2'd1, 2'd0} :
+		(next_state == 2) ? {3'd4, 3'd4, 3'd4, 2'd1, 2'd0, 2'd2} :
+		(next_state == 3) ? {3'd4, 3'd3, 3'd4, 2'd0, 2'd2, 2'd1} :
+		(next_state == 4) ? {3'd4, 3'd3, 3'd3, 2'd2, 2'd1, 2'd0} :
+		(next_state == 5) ? {3'd3, 3'd3, 3'd3, 2'd1, 2'd0, 2'd2} :
+		(next_state == 6) ? {3'd3, 3'd2, 3'd3, 2'd0, 2'd2, 2'd1} :
+		(next_state == 7) ? {3'd3, 3'd2, 3'd2, 2'd2, 2'd1, 2'd0} :
+		(next_state == 8) ? {3'd2, 3'd2, 3'd2, 2'd1, 2'd0, 2'd2} :
+		(next_state == 9) ? {3'd2, 3'd1, 3'd2, 2'd0, 2'd2, 2'd1} :
+		(next_state == 10) ? {3'd2, 3'd1, 3'd1, 2'd2, 2'd1, 2'd0} :
+		(next_state == 11) ? {3'd1, 3'd1, 3'd1, 2'd1, 2'd0, 2'd2} :
+		(next_state == 12) ? {3'd1, 3'd0, 3'd1, 2'd0, 2'd2, 2'd1} :
+		(next_state == 13) ? {3'd1, 3'd0, 3'd0, 2'd2, 2'd1, 2'd0} :
+		(next_state == 14) ? {3'd0, 3'd0, 3'd0, 2'd1, 2'd0, 2'd2} :
+		(next_state == 15) ? {3'd0, 3'd0, 3'd0, 2'd2, 2'd1, 2'd3} :
+		15'd0;
+*/
 
+assign {sel_A, sel_B, sel_C, sel_k0, sel_k1, sel_k2} = 
+		(next_state == 0) ? {3'd5, 3'd4, 3'd4, 2'd3, 2'd2, 2'd1} :
+		(next_state == 1) ? {3'd5, 3'd4, 3'd4, 2'd2, 2'd1, 2'd0} :
+		(next_state == 2) ? {3'd4, 3'd4, 3'd4, 2'd1, 2'd0, 2'd2} :
+		(next_state == 3) ? {3'd4, 3'd3, 3'd4, 2'd0, 2'd2, 2'd1} :
+		(next_state == 4) ? {3'd4, 3'd3, 3'd3, 2'd2, 2'd1, 2'd0} :
+		(next_state == 5) ? {3'd3, 3'd3, 3'd3, 2'd1, 2'd0, 2'd2} :
+		(next_state == 6) ? {3'd3, 3'd2, 3'd3, 2'd0, 2'd2, 2'd1} :
+		(next_state == 7) ? {3'd3, 3'd2, 3'd2, 2'd2, 2'd1, 2'd0} :
+		(next_state == 8) ? {3'd2, 3'd2, 3'd2, 2'd1, 2'd0, 2'd2} :
+		(next_state == 9) ? {3'd2, 3'd1, 3'd2, 2'd0, 2'd2, 2'd1} :
+		(next_state == 10) ? {3'd2, 3'd1, 3'd1, 2'd2, 2'd1, 2'd0} :
+		(next_state == 11) ? {3'd1, 3'd1, 3'd1, 2'd1, 2'd0, 2'd2} :
+		(next_state == 12) ? {3'd1, 3'd0, 3'd1, 2'd0, 2'd2, 2'd1} :
+		(next_state == 13) ? {3'd1, 3'd0, 3'd0, 2'd2, 2'd1, 2'd0} :
+		(next_state == 14) ? {3'd0, 3'd0, 3'd0, 2'd1, 2'd0, 2'd2} :
+		(next_state == 15) ? {3'd0, 3'd0, 3'd0, 2'd0, 2'd2, 2'd3} :
+		                     15'd0;
+		                     
+		                     
 	function integer clogb2(input integer value);
         integer i;
         begin

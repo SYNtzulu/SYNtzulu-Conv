@@ -98,7 +98,16 @@ accumulator
 #(DATA_WIDTH+1)
 acc
 (
-clk,en_shift[1],en_shift[2],en_shift[3],rst,acc_clear_and_go,acc_clear,double_adder_out[0],double_adder_out[1],acc_out
+	clk,
+	en_shift[1],
+	en_shift[2],
+	en_shift[3], 
+	rst, 
+	acc_clear_and_go, 
+	acc_clear, 
+	double_adder_out[0], 
+	double_adder_out[1], 
+	acc_out
 );
 
             
@@ -109,3 +118,31 @@ assign out = valid? acc_out:0;
 assign valid = dense_enable ? en_shift[PIPE-1] : en_shift[PIPE-1] & en_conv_shift[4];
 
 endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

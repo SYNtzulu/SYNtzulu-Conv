@@ -1,3 +1,0 @@
-`define DW 8
-`define INPUT_CHANNELS 16
-`define INPUT_SPIKE_1 10

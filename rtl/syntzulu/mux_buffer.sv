@@ -6,6 +6,7 @@ module mux_buffer#(
     input en,
     input rst,
     input [1:0] stride,
+    input padding,
     input input_feature_ready,
     input conv_enable,
     input [3:0] last_state,
@@ -32,6 +33,7 @@ module mux_buffer#(
         .en(en),
         .rst(rst),
         .stride(stride),
+        .padding(padding),
         .conv_enable(conv_enable),
         .last_state(last_state),
         .input_feature_ready(input_feature_ready),
@@ -175,6 +177,7 @@ module mux_row#(
                 2'd0: sel3 = c;
                 2'd1: sel3 = b;
                 2'd2: sel3 = a;
+                3'd3: sel3 = 1'b0;
                 default: sel3 = a;
             endcase
         end

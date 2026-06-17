@@ -21,8 +21,6 @@ module servant#(
     output wire         o_flash_ss,
     output wire         o_flash_mosi
 );
-
-    
     
     parameter reset_strategy = "MINI";
     parameter with_csr = 1;
@@ -147,9 +145,6 @@ module servant#(
         .o_wb_clkgen_ack     (wb_clk_ack)
     );
 
-
-
-    // --------------------- ESTU ---------------------
     wire [12:0] o_output_buffer_out;
     servant_arbiter arbiter(
         .i_wb_cpu_dbus_adr (wb_dmem_adr),
@@ -419,6 +414,9 @@ wire [15:0] wr_data_intmem3_spi;
 wire wen_intmem4_spi;
 wire [13:0] wr_addr_intmem4_spi;
 wire [15:0] wr_data_intmem4_spi;
+wire wen_instruction_spi;
+wire [13:0] wr_addr_instruction_spi;
+wire [15:0] wr_data_instruction_spi;
 wire wen_inputbuffer_spi;
 wire [13:0] wr_addr_inputbuffer_spi;
 wire [15:0] wr_data_inputbuffer_spi;
@@ -450,7 +448,11 @@ servant_spi inst_servant_spi (
     .wr_data_intmem3(wr_data_intmem3_spi),
     .wen_intmem4   (wen_intmem4_spi),
     .wr_addr_intmem4(wr_addr_intmem4_spi),
-    .wr_data_intmem4(wr_data_intmem4_spi),
+    .wr_data_intmem4(wr_data_intmem4_spi),/*
+    // Instruction signals
+    .wen_instr (wen_instruction_spi),
+    .wr_addr_instr (wr_addr_instruction_spi),
+    .wr_data_instr (wr_data_instruction_spi),*/
     // Input buffer signals
     .wen_inputbuffer (wen_inputbuffer_spi),
     .wr_addr_inputbuffer (wr_addr_inputbuffer_spi),
@@ -482,7 +484,11 @@ servant_syntzulu inst_servant_syntzulu(
     .wen_intmem4_spi        (wen_intmem4_spi),
     .wr_addr_intmem4_spi    (wr_addr_intmem4_spi),
     .wr_data_intmem4_spi    (wr_data_intmem4_spi),
-
+/*
+    .wen_instr              (wen_instruction_spi),
+    .wr_addr_instr          (wr_addr_instruction_spi),
+    .wr_data_instr          (wr_data_instruction_spi),
+*/
     .i_sample_mem_spi       (wr_data_inputbuffer_spi), 
     .i_en_encoding_slot     (wen_inputbuffer_spi),
     .i_wr_addr_inputbuffer  (wr_addr_inputbuffer_spi),

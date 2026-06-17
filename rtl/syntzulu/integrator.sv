@@ -3,7 +3,7 @@
 module integrator #(parameter WIDTH = 16)(
     input clk, rst, en, detection,
     input conv_enable,
-    input polling_spike_enable,
+    input pooling_spike_enable,
     input first_input_feature,
     input [WIDTH-1:0] output_old,
     input [13:0] decay,
@@ -13,7 +13,9 @@ module integrator #(parameter WIDTH = 16)(
     output valid,
     output valid_fifo,
     output spike,
-    output [WIDTH-1:0] output_new
+    output [WIDTH-1:0] output_new,
+    input recurrency,
+    input recurrency_next
 );
     localparam P_SIZE = WIDTH + 13;
 
@@ -25,7 +27,12 @@ module integrator #(parameter WIDTH = 16)(
     wire signed_out;
 
     wire signed [15:0] mac_a = output_old[15:0]; // tronca a 16 bit
-    wire signed [15:0] mac_b = conv_enable ? (first_input_feature ? { {2{decay[13]}}, decay } : 4096) : { {2{decay[13]}}, decay }; 
+    
+    wire signed [15:0] mac_b;
+    wire signed [15:0] mac_b_1 = conv_enable ? (first_input_feature ? { {2{decay[13]}}, decay } : 4096) : { {2{decay[13]}}, decay }; 
+    
+    assign mac_b = recurrency_next ? 4096 :mac_b_1 ;
+    
 
     // Istanziazione del blocco DSP
     SB_MAC16 #(
@@ -124,8 +131,8 @@ module integrator #(parameter WIDTH = 16)(
         end
     end
 
-    assign spike = polling_spike_enable ? 1 :((comparator_in >= r_threshold[3]) & detection);
-    assign output_new = spike ? 0 : comparator_in;
+    assign spike = pooling_spike_enable ? 1 :((comparator_in >= r_threshold[3]) & detection);
+    assign output_new = ( spike && ~recurrency )? 0 : comparator_in;
     assign valid_fifo = en_shift[3];
     assign valid = en_shift[3] && detection;
 

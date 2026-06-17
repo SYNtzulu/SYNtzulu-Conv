@@ -5,15 +5,15 @@ module priority_encoder #(
 	input en,
 	input rst,
 	input conv_enable,
-	input polling_enable,
+	input pooling_enable,
 	input [MAX_KERNEL*MAX_KERNEL-1:0] kernel_in,
 	input input_feature_ready,
 	input weights_buffer_ready,
 	output reg conv_en,
 	output wire [15:0] spike_address,
     output PE_finish_pulse,
-	output polling_spike,
-	output valid_polling_spike,
+	output pooling_spike,
+	output valid_pooling_spike,
 	output last_spike
 );  	
 	// Mappatura della matrice 3x3 in colonne
@@ -65,14 +65,14 @@ module priority_encoder #(
 	wire [3:0] active_spike;
 	assign active_spike = C0+C1+C2;
 	wire PE_finish;
-	assign PE_finish = polling_enable ? en_d : (conv_enable && PE_active && kernel==0) ? 1 : 0; 
+	assign PE_finish = pooling_enable ? en_d : (conv_enable && PE_active && kernel==0) ? 1 : 0; 
 
 	assign last_spike = active_spike <= 4 ? 1 : 0;
 
 	wire active_spike_maior_zero = active_spike > 0;
 
-	assign polling_spike = (polling_enable && PE_active) ? active_spike_maior_zero : 0;
-	assign valid_polling_spike = en_d;
+	assign pooling_spike = (pooling_enable && PE_active) ? active_spike_maior_zero : 0;
+	assign valid_pooling_spike = en_d;
 
 	always @(posedge clk) begin
 		if (rst)
@@ -288,7 +288,7 @@ module encoder_system(
     assign spike_address_PE3 = correct_address(temp_PE3);
 
 endmodule
-
+/*
 module encoder_system_old(
 	input [7:0] sel,
 	input  wire [2:0] R_PE0,R_PE1,R_PE2,R_PE3,
@@ -359,3 +359,4 @@ module encoder_system_old(
 
 
 endmodule
+*/

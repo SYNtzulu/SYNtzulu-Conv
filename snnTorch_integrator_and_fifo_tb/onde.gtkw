@@ -1,0 +1,38 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Fri May  8 09:22:58 2026
+[*]
+[dumpfile] "/home/luca/syntzulu_conv/snnTorch_integrator_and_fifo_tb/wave.vcd"
+[dumpfile_mtime] "Fri May  8 09:22:46 2026"
+[dumpfile_size] 7657624
+[savefile] "/home/luca/syntzulu_conv/snnTorch_integrator_and_fifo_tb/onde.gtkw"
+[timestart] 0
+[size] 2756 1473
+[pos] 25 22
+*-24.794952 2056000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_integrator_and_fifo_snnTorch.
+[treeopen] tb_integrator_and_fifo_snnTorch.dut.
+[sst_width] 456
+[signals_width] 420
+[sst_expanded] 1
+[sst_vpaned_height] 551
+@28
+tb_integrator_and_fifo_snnTorch.clk
+tb_integrator_and_fifo_snnTorch.dut.buffer_current_mem_i.rst
+@200
+-
+@28
+tb_integrator_and_fifo_snnTorch.en
+@420
+tb_integrator_and_fifo_snnTorch.stimolo[15:0]
+@22
+tb_integrator_and_fifo_snnTorch.dut.output_old[7:0]
+@200
+-
+@420
+tb_integrator_and_fifo_snnTorch.n_errors_out
+@200
+-
+-
+[pattern_trace] 1
+[pattern_trace] 0
