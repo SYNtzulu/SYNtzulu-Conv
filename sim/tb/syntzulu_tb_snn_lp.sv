@@ -42,7 +42,6 @@ module syntzulu_tb_snn_lp;
     localparam VCD_FILE     = "syntzulu_tb_snn_lp.vcd";                 // waveform
 
     // ---- Parametri snn_lp (specchio della configurazione servant_syntzulu) -
-    localparam DW               = `DW;
     localparam WIDTH            = 16;
     localparam CHANNELS         = `INPUT_CHANNELS; // 32
     localparam TIME_STEPS       = `TIME_STEPS;     // 10

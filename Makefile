@@ -33,7 +33,7 @@ simulate_syntzulu_snn_lp:
 	iverilog -o rtl_sim_snn_lp \
 		sim/tb/syntzulu_tb_snn_lp.sv \
 		rtl/syntzulu/*.sv rtl/syntzulu/*.v \
-		rtl/primitive/*.sv rtl/primitive/*.v
+		rtl/primitive/*.sv
 	vvp rtl_sim_snn_lp
 	rm -f rtl_sim_snn_lp
 	gtkwave --save=work/debug_snn_lp.gtkw syntzulu_tb_snn_lp.vcd &
