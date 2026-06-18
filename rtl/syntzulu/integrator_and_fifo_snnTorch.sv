@@ -58,8 +58,7 @@ module integrator_and_fifo_snnTorch #(
     // scrittura decay/threshold mem (caricamento esterno)
     input decay_wren,
     input [clogb2(DEPTH-1)-1:0] decay_wr_addr,
-    input [nbits_decay + nbits_thr -1:0] decay_data_in,
-    input decay_ena
+    input [nbits_decay + nbits_thr -1:0] decay_data_in
     );
     
     
@@ -125,8 +124,7 @@ module integrator_and_fifo_snnTorch #(
 
         .wren(decay_wren),
         .wr_addr(decay_wr_addr),
-        .data_in(decay_data_in),
-        .ena(decay_ena)
+        .data_in(decay_data_in)
     );
 
 	// {decay, threshold}

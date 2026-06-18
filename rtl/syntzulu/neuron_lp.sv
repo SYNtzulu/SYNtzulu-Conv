@@ -38,8 +38,7 @@ module neuron_lp#(
     // scrittura decay/threshold mem (caricamento esterno)
     input decay_wren,
     input [clogb2(DEPTH-1)-1:0] decay_wr_addr,
-    input [31:0] decay_data_in,
-    input decay_ena
+    input [31:0] decay_data_in
     );
 
     localparam CURRENT_WIDTH = 2*(WEIGHTS+1);
@@ -86,8 +85,7 @@ module neuron_lp#(
       .first_layer_no_spike(first_layer_no_spike),
       .decay_wren(decay_wren),
       .decay_wr_addr(decay_wr_addr),
-      .decay_data_in(decay_data_in),
-      .decay_ena(decay_ena)
+      .decay_data_in(decay_data_in)
       //.set_address(set_address)
     );
 

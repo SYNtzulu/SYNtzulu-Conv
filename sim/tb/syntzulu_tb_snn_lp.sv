@@ -103,18 +103,18 @@ module syntzulu_tb_snn_lp;
     reg                                  reset_potential    = 1'b0;
 
     // Porte di scrittura weight memory (una per layer, 32-bit)
-    reg                                  w1_wren = 1'b0, w1_ena = 1'b0;  // layer 1 (porta L1)
+    reg                                  w1_wren = 1'b0;  // layer 1 (porta L1)
     reg [clogb2(WEIGHT_DEPTH_12-1)-1:0]  w1_addr = '0;
     reg [31:0]                           w1_data = 32'd0;
-    reg                                  w2_wren = 1'b0, w2_ena = 1'b0;  // layer 2 (porta L2)
+    reg                                  w2_wren = 1'b0;  // layer 2 (porta L2)
     reg [clogb2(WEIGHT_DEPTH_34-1)-1:0]  w2_addr = '0;
     reg [31:0]                           w2_data = 32'd0;
 
     // Porte di scrittura decay/threshold mem (32-bit) e instruction mem (16-bit)
-    reg                                  d1_wren = 1'b0, d1_ena = 1'b0;  // decay layer 1
+    reg                                  d1_wren = 1'b0;  // decay layer 1
     reg [clogb2(DECAY_DEPTH-1)-1:0]      d1_addr = '0;
     reg [31:0]                           d1_data = 32'd0;
-    reg                                  d2_wren = 1'b0, d2_ena = 1'b0;  // decay layer 2
+    reg                                  d2_wren = 1'b0;  // decay layer 2
     reg [clogb2(DECAY_DEPTH-1)-1:0]      d2_addr = '0;
     reg [31:0]                           d2_data = 32'd0;
     reg                                  im_wren = 1'b0;                 // instruction mem
@@ -166,23 +166,19 @@ module syntzulu_tb_snn_lp;
         .weight_mem_L1_wren    (w1_wren),
         .weight_mem_L1_wr_addr (w1_addr),
         .weight_mem_L1_data_in (w1_data),
-        .weight_mem_L1_ena     (w1_ena),
         // weight memory L2 (layer 2)
         .weight_mem_L2_wren    (w2_wren),
         .weight_mem_L2_wr_addr (w2_addr),
         .weight_mem_L2_data_in (w2_data),
-        .weight_mem_L2_ena     (w2_ena),
 
         // decay/threshold memory (layer 1)
         .decay_mem_L1_wren     (d1_wren),
         .decay_mem_L1_wr_addr  (d1_addr),
         .decay_mem_L1_data_in  (d1_data),
-        .decay_mem_L1_ena      (d1_ena),
         // decay/threshold memory (layer 2)
         .decay_mem_L2_wren     (d2_wren),
         .decay_mem_L2_wr_addr  (d2_addr),
         .decay_mem_L2_data_in  (d2_data),
-        .decay_mem_L2_ena      (d2_ena),
         // instruction memory
         .instr_mem_wren        (im_wren),
         .instr_mem_wr_addr     (im_addr),
@@ -263,14 +259,14 @@ module syntzulu_tb_snn_lp;
                         weights_mem[base_byte + 4*i + 3]};
                 @(posedge clk);
                 case (port)
-                    1: begin w1_wren <= 1'b1; w1_ena <= 1'b1; w1_addr <= i[12:0]; w1_data <= word; end
-                    2: begin w2_wren <= 1'b1; w2_ena <= 1'b1; w2_addr <= i[12:0]; w2_data <= word; end
+                    1: begin w1_wren <= 1'b1; w1_addr <= i[12:0]; w1_data <= word; end
+                    2: begin w2_wren <= 1'b1; w2_addr <= i[12:0]; w2_data <= word; end
                 endcase
             end
 
             @(posedge clk);
-            w1_wren <= 1'b0; w1_ena <= 1'b0;
-            w2_wren <= 1'b0; w2_ena <= 1'b0;
+            w1_wren <= 1'b0;
+            w2_wren <= 1'b0;
         end
     endtask
 
@@ -321,15 +317,15 @@ module syntzulu_tb_snn_lp;
                 if (c == 1) begin
                     @(posedge clk);
                     case (port)
-                        1: begin d1_wren <= 1'b1; d1_ena <= 1'b1; d1_addr <= i[clogb2(DECAY_DEPTH-1)-1:0]; d1_data <= word; end
-                        2: begin d2_wren <= 1'b1; d2_ena <= 1'b1; d2_addr <= i[clogb2(DECAY_DEPTH-1)-1:0]; d2_data <= word; end
+                        1: begin d1_wren <= 1'b1; d1_addr <= i[clogb2(DECAY_DEPTH-1)-1:0]; d1_data <= word; end
+                        2: begin d2_wren <= 1'b1; d2_addr <= i[clogb2(DECAY_DEPTH-1)-1:0]; d2_data <= word; end
                     endcase
                     i = i + 1;
                 end
             end
             @(posedge clk);
-            d1_wren <= 1'b0; d1_ena <= 1'b0;
-            d2_wren <= 1'b0; d2_ena <= 1'b0;
+            d1_wren <= 1'b0;
+            d2_wren <= 1'b0;
             $fclose(f);
             $display("[TB] Decay mem L%0d caricata (%0d parole)", port, i);
         end

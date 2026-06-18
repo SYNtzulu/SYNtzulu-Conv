@@ -48,25 +48,21 @@ module snn_lp
     input weight_mem_L1_wren,
     input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L1_wr_addr,
     input [32-1:0] weight_mem_L1_data_in,
-    input weight_mem_L1_ena,
 
     // weight mem 2 (layer 2)
     input weight_mem_L2_wren,
     input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L2_wr_addr,
     input [32-1:0] weight_mem_L2_data_in,
-    input weight_mem_L2_ena,
 
     // decay/threshold mem write (layer 1)
     input decay_mem_L1_wren,
     input [clogb2(DEPTH_FIFO-1)-1:0] decay_mem_L1_wr_addr,
     input [32-1:0] decay_mem_L1_data_in,
-    input decay_mem_L1_ena,
 
     // decay/threshold mem write (layer 2)
     input decay_mem_L2_wren,
     input [clogb2(DEPTH_FIFO-1)-1:0] decay_mem_L2_wr_addr,
     input [32-1:0] decay_mem_L2_data_in,
-    input decay_mem_L2_ena,
 
     // instruction mem write
     input instr_mem_wren,
@@ -282,12 +278,9 @@ layer_lp_l1_i
 	.weight_mem_L1_wren(weight_mem_L1_wren),
 	.weight_mem_L1_wr_addr(weight_mem_L1_wr_addr),
 	.weight_mem_L1_data_in(weight_mem_L1_data_in),
-	.weight_mem_L1_ena(weight_mem_L1_ena),
-
 	.decay_mem_wren(decay_mem_L1_wren),
 	.decay_mem_wr_addr(decay_mem_L1_wr_addr),
 	.decay_mem_data_in(decay_mem_L1_data_in),
-	.decay_mem_ena(decay_mem_L1_ena),
 
 	.weights_buffer_ready(weights_buffer_ready_L1),
 	
@@ -367,12 +360,9 @@ layer_lp_l2_i
 	.weight_mem_L1_wren(weight_mem_L2_wren),
 	.weight_mem_L1_wr_addr(weight_mem_L2_wr_addr),
 	.weight_mem_L1_data_in(weight_mem_L2_data_in),
-	.weight_mem_L1_ena(weight_mem_L2_ena),
-
 	.decay_mem_wren(decay_mem_L2_wren),
 	.decay_mem_wr_addr(decay_mem_L2_wr_addr),
 	.decay_mem_data_in(decay_mem_L2_data_in),
-	.decay_mem_ena(decay_mem_L2_ena),
 
 	.weights_buffer_ready(weights_buffer_ready_L2),
 

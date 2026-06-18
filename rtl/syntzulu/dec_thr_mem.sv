@@ -37,8 +37,7 @@ input recurrency_next,
 // porta A di scrittura (caricamento esterno da AXI/TB)
 input wren,
 input [clogb2(DEPTH-1)-1:0] wr_addr,
-input [DATA_WIDTH-1:0] data_in,
-input ena
+input [DATA_WIDTH-1:0] data_in
 
     );
 
@@ -73,7 +72,7 @@ mem_i
   .dina(data_in),
   .clk(clk),
   .wea(wren),
-  .ena(ena),
+  .ena(wren),
   .enb(1'b1),               
   .rst(rst),                
   .regceb(1'b1),            
