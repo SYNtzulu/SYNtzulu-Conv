@@ -32,7 +32,13 @@ output [DATA_WIDTH-1:0] DO,
 input clear_counter,
 
 input layer_integrated,
-input recurrency_next
+input recurrency_next,
+
+// porta A di scrittura (caricamento esterno da AXI/TB)
+input wren,
+input [clogb2(DEPTH-1)-1:0] wr_addr,
+input [DATA_WIDTH-1:0] data_in,
+input ena
 
     );
 
@@ -62,12 +68,12 @@ BRAM_singlePort_readFirst
   )
 mem_i
  (
-  .addra(),                 
-  .addrb(rd_cnt),           
-  .dina(),                  
-  .clk(clk),                
-  .wea(1'b0),               
-  .ena(1'b0),               
+  .addra(wr_addr),
+  .addrb(rd_cnt),
+  .dina(data_in),
+  .clk(clk),
+  .wea(wren),
+  .ena(ena),
   .enb(1'b1),               
   .rst(rst),                
   .regceb(1'b1),            

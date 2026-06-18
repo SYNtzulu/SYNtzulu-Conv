@@ -8,6 +8,10 @@ module instruction_memory #(
     input  rst,
     input  new_inference_start,
     input  en,
+    // porta di scrittura (caricamento esterno da AXI/TB)
+    input  wren,
+    input  [clogb2(INSTR_DEPTH-1)-1:0] wr_addr,
+    input  [15:0] data_in,
     (* keep *) output reg [INSTR_WIDTH-1:0] instruction
 );
 
@@ -41,12 +45,12 @@ module instruction_memory #(
         .RADDR(addr), 
         .RCLK(clk), 
         .RCLKE(1'b1),
-        .RE(state == READ || state == IDLE), 
-        .WADDR(1'b0), 
-        .WCLK(clk), 
+        .RE(state == READ || state == IDLE),
+        .WADDR(wr_addr),
+        .WCLK(clk),
         .WCLKE(1'b1),
-        .WDATA(1'b0), 
-        .WE(1'b0),
+        .WDATA(data_in),
+        .WE(wren),
         .MASK(16'h0000)
     );
 

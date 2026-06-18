@@ -53,7 +53,13 @@ module integrator_and_fifo_snnTorch #(
     input [nbits_M -1 :0] M,
     input [clogb2(MAX_INPUT_FEATURE)-1:0] num_input_feature,
     input [15:0] reset_recurrency,
-    input first_layer_no_spike
+    input first_layer_no_spike,
+
+    // scrittura decay/threshold mem (caricamento esterno)
+    input decay_wren,
+    input [clogb2(DEPTH-1)-1:0] decay_wr_addr,
+    input [nbits_decay + nbits_thr -1:0] decay_data_in,
+    input decay_ena
     );
     
     
@@ -115,8 +121,13 @@ module integrator_and_fifo_snnTorch #(
         .clear_counter(clear_counter),
 
         .layer_integrated(layer_integrated),
-        .recurrency_next(recurrency_next)
-    ); 
+        .recurrency_next(recurrency_next),
+
+        .wren(decay_wren),
+        .wr_addr(decay_wr_addr),
+        .data_in(decay_data_in),
+        .ena(decay_ena)
+    );
 
 	// {decay, threshold}
 	assign dec = dec_thr[nbits_thr + nbits_decay - 1 : nbits_decay]; //230;

@@ -27,7 +27,9 @@ module snn_lp
 	parameter WEIGHT_DEPTH_34           = 4096,
 
 	// Cartella dati per le memorie decay/threshold (override dal testbench)
-	parameter DATA_DIR                  = "mnist"
+	parameter DATA_DIR                  = "mnist",
+	parameter DECAY_THR_FILE_1          = {DATA_DIR, "/decay_thr_1.txt"},
+	parameter DECAY_THR_FILE_2          = {DATA_DIR, "/decay_thr_2.txt"}
 )
     (
     // input
@@ -56,7 +58,24 @@ module snn_lp
     input [32-1:0] weight_mem_L2_data_in,
     input weight_mem_L2_ena,
 
-	
+    // decay/threshold mem write (layer 1)
+    input decay_mem_L1_wren,
+    input [clogb2(DEPTH_FIFO-1)-1:0] decay_mem_L1_wr_addr,
+    input [32-1:0] decay_mem_L1_data_in,
+    input decay_mem_L1_ena,
+
+    // decay/threshold mem write (layer 2)
+    input decay_mem_L2_wren,
+    input [clogb2(DEPTH_FIFO-1)-1:0] decay_mem_L2_wr_addr,
+    input [32-1:0] decay_mem_L2_data_in,
+    input decay_mem_L2_ena,
+
+    // instruction mem write
+    input instr_mem_wren,
+    input [clogb2(LAYERS*INSTR_WIDTH/16-1)-1:0] instr_mem_wr_addr,
+    input [16-1:0] instr_mem_data_in,
+
+
     output wire signed [WIDTH-1:0] voltage_1,
     output wire signed [WIDTH-1:0] voltage_2,
     output s1, s2,
@@ -98,6 +117,9 @@ instruction_memory #(
     .rst(rst),
     .new_inference_start(start_instruction),
     .en(new_instruction),
+    .wren(instr_mem_wren),
+    .wr_addr(instr_mem_wr_addr),
+    .data_in(instr_mem_data_in),
     .instruction(current_instr)
 );
 
@@ -217,7 +239,7 @@ layer_lp
 	.MAX_NEURONS(MAX_NEURONS/2),
 	.MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
 	.DEPTH_FIFO(DEPTH_FIFO),
-	.DECAY_THR_FILE ({DATA_DIR, "/decay_thr_1.txt"}),
+	.DECAY_THR_FILE (DECAY_THR_FILE_1),
 
 	.LAYERS(LAYERS),
 
@@ -266,6 +288,11 @@ layer_lp_l1_i
 	.weight_mem_L1_data_in(weight_mem_L1_data_in),
 	.weight_mem_L1_ena(weight_mem_L1_ena),
 
+	.decay_mem_wren(decay_mem_L1_wren),
+	.decay_mem_wr_addr(decay_mem_L1_wr_addr),
+	.decay_mem_data_in(decay_mem_L1_data_in),
+	.decay_mem_ena(decay_mem_L1_ena),
+
 	.weights_buffer_ready(weights_buffer_ready_L1),
 	
 	.layer_integrated(layer_integrated),
@@ -297,7 +324,7 @@ layer_lp
 	.MAX_NEURONS(MAX_NEURONS/2),
 	.MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
 	.DEPTH_FIFO(DEPTH_FIFO),
-	.DECAY_THR_FILE ({DATA_DIR, "/decay_thr_2.txt"}),
+	.DECAY_THR_FILE (DECAY_THR_FILE_2),
 
 	.LAYERS(LAYERS),
 
@@ -346,6 +373,12 @@ layer_lp_l2_i
 	.weight_mem_L1_wr_addr(weight_mem_L2_wr_addr),
 	.weight_mem_L1_data_in(weight_mem_L2_data_in),
 	.weight_mem_L1_ena(weight_mem_L2_ena),
+
+	.decay_mem_wren(decay_mem_L2_wren),
+	.decay_mem_wr_addr(decay_mem_L2_wr_addr),
+	.decay_mem_data_in(decay_mem_L2_data_in),
+	.decay_mem_ena(decay_mem_L2_ena),
+
 	.weights_buffer_ready(weights_buffer_ready_L2),
 
 	.layer_integrated(layer_integrated),

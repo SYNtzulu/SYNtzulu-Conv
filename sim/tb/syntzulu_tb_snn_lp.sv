@@ -37,7 +37,9 @@ module syntzulu_tb_snn_lp;
     localparam WEIGHTS_FILE = {`PATH, "/weights.txt"};       // pesi 32-bit (4 byte/riga, $readmemh)
     localparam S1_FILE      = {`PATH, "/input_even.txt"};    // bit s1_encoding (uno per riga)
     localparam S2_FILE      = {`PATH, "/input_odd.txt"};     // bit s2_encoding (uno per riga)
-    localparam INSTR_FILE   = {`PATH, "/instruction.hex"};   // istruzioni
+    localparam INSTR_FILE   = {`PATH, "/instruction.hex"};   // istruzioni (16-bit/riga)
+    localparam DECAY1_FILE  = {`PATH, "/decay_thr_1.txt"};   // decay/threshold layer 1 (32-bit/riga)
+    localparam DECAY2_FILE  = {`PATH, "/decay_thr_2.txt"};   // decay/threshold layer 2 (32-bit/riga)
     localparam TARGET_FILE  = {`PATH, "/snn_inference.txt"}; // riferimento p1/p2
     localparam OUTPUT_FILE  = {`PATH, "/inference_out.txt"}; // dump correnti HW
     localparam VCD_FILE     = "syntzulu_tb_snn_lp.vcd";                 // waveform
@@ -59,6 +61,10 @@ module syntzulu_tb_snn_lp;
     localparam L1_BYTE_OFFSET   = 0;                         // layer 1 -> porta L1
     localparam L2_BYTE_OFFSET   = 4 * WORDS_PER_MEM;         // layer 2 -> porta L3 (16384)
     localparam WEIGHTS_BYTES    = 8 * WORDS_PER_MEM;         // 32768 byte totali
+
+    // ---- Layout instruction/decay mem (caricate a runtime via porte) ------
+    localparam INSTR_DEPTH_TB   = LAYERS * INSTR_WIDTH / 16;  // 40 parole da 16 bit
+    localparam DECAY_DEPTH      = 1024;                       // = DEPTH_FIFO di snn_lp
 
     // ---- Stream s1/s2 -----------------------------------------------------
     //   Input feature map: INPUT_H × INPUT_W × INPUT_C  (1 bit per spike).
@@ -104,6 +110,17 @@ module syntzulu_tb_snn_lp;
     reg [clogb2(WEIGHT_DEPTH_34-1)-1:0]  w2_addr = '0;
     reg [31:0]                           w2_data = 32'd0;
 
+    // Porte di scrittura decay/threshold mem (32-bit) e instruction mem (16-bit)
+    reg                                  d1_wren = 1'b0, d1_ena = 1'b0;  // decay layer 1
+    reg [clogb2(DECAY_DEPTH-1)-1:0]      d1_addr = '0;
+    reg [31:0]                           d1_data = 32'd0;
+    reg                                  d2_wren = 1'b0, d2_ena = 1'b0;  // decay layer 2
+    reg [clogb2(DECAY_DEPTH-1)-1:0]      d2_addr = '0;
+    reg [31:0]                           d2_data = 32'd0;
+    reg                                  im_wren = 1'b0;                 // instruction mem
+    reg [clogb2(INSTR_DEPTH_TB-1)-1:0]   im_addr = '0;
+    reg [15:0]                           im_data = 16'd0;
+
     // Uscite snn_lp
     wire                    valid;
     wire                    valid_spike;
@@ -124,8 +141,10 @@ module syntzulu_tb_snn_lp;
         .MAX_NEURONS     (MAX_NEURONS),
         .LAYERS          (LAYERS),
         .INSTR_WIDTH     (INSTR_WIDTH),
-        .INSTR_FILE      (INSTR_FILE),
-        .DATA_DIR        (`PATH),  // cartella dati per decay_thr_*.txt (da `PATH)
+        .INSTR_FILE      (""),    // instr mem caricata a runtime via porta
+        .DATA_DIR        (`PATH),
+        .DECAY_THR_FILE_1(""),    // decay mem L1 caricata a runtime via porta
+        .DECAY_THR_FILE_2(""),    // decay mem L2 caricata a runtime via porta
         .WEIGHTS_FILE_1  (""),    // weight mem caricate a runtime via porte
         .WEIGHTS_FILE_2  (""),
         .WEIGHTS_FILE_3  (""),
@@ -155,6 +174,21 @@ module syntzulu_tb_snn_lp;
         .weight_mem_L2_wr_addr (w2_addr),
         .weight_mem_L2_data_in (w2_data),
         .weight_mem_L2_ena     (w2_ena),
+
+        // decay/threshold memory (layer 1)
+        .decay_mem_L1_wren     (d1_wren),
+        .decay_mem_L1_wr_addr  (d1_addr),
+        .decay_mem_L1_data_in  (d1_data),
+        .decay_mem_L1_ena      (d1_ena),
+        // decay/threshold memory (layer 2)
+        .decay_mem_L2_wren     (d2_wren),
+        .decay_mem_L2_wr_addr  (d2_addr),
+        .decay_mem_L2_data_in  (d2_data),
+        .decay_mem_L2_ena      (d2_ena),
+        // instruction memory
+        .instr_mem_wren        (im_wren),
+        .instr_mem_wr_addr     (im_addr),
+        .instr_mem_data_in     (im_data),
 
         .voltage_1              (voltage_1),
         .voltage_2              (voltage_2),
@@ -239,6 +273,67 @@ module syntzulu_tb_snn_lp;
             @(posedge clk);
             w1_wren <= 1'b0; w1_ena <= 1'b0;
             w2_wren <= 1'b0; w2_ena <= 1'b0;
+        end
+    endtask
+
+    // Carica la instruction mem (parole 16-bit) da instruction.hex, scrivendo
+    // a runtime via la porta instr_mem. Va chiamata con rst alto: la FSM
+    // interna della instruction_memory resta ferma finche' non si rilascia rst.
+    task automatic load_instr_mem;
+        integer f, c, i;
+        reg [15:0] word;
+        begin
+            f = $fopen(INSTR_FILE, "r");
+            if (f == 0) begin
+                $display("[TB] ERRORE: impossibile aprire %s", INSTR_FILE);
+                $finish;
+            end
+            i = 0;
+            while (!$feof(f) && i < INSTR_DEPTH_TB) begin
+                c = $fscanf(f, "%h\n", word);
+                if (c == 1) begin
+                    @(posedge clk);
+                    im_wren <= 1'b1; im_addr <= i[clogb2(INSTR_DEPTH_TB-1)-1:0]; im_data <= word;
+                    i = i + 1;
+                end
+            end
+            @(posedge clk);
+            im_wren <= 1'b0;
+            $fclose(f);
+            $display("[TB] Instruction mem caricata (%0d parole da %s)", i, INSTR_FILE);
+        end
+    endtask
+
+    // Carica una decay/threshold mem (parole 32-bit) scrivendo via porta:
+    //   port = 1 -> decay_thr_1.txt sulla porta L1
+    //   port = 2 -> decay_thr_2.txt sulla porta L2
+    task automatic load_decay_mem;
+        input integer port;
+        integer f, c, i;
+        reg [31:0] word;
+        begin
+            f = (port == 1) ? $fopen(DECAY1_FILE, "r") : $fopen(DECAY2_FILE, "r");
+            if (f == 0) begin
+                $display("[TB] ERRORE: impossibile aprire decay file (port %0d)", port);
+                $finish;
+            end
+            i = 0;
+            while (!$feof(f) && i < DECAY_DEPTH) begin
+                c = $fscanf(f, "%h\n", word);
+                if (c == 1) begin
+                    @(posedge clk);
+                    case (port)
+                        1: begin d1_wren <= 1'b1; d1_ena <= 1'b1; d1_addr <= i[clogb2(DECAY_DEPTH-1)-1:0]; d1_data <= word; end
+                        2: begin d2_wren <= 1'b1; d2_ena <= 1'b1; d2_addr <= i[clogb2(DECAY_DEPTH-1)-1:0]; d2_data <= word; end
+                    endcase
+                    i = i + 1;
+                end
+            end
+            @(posedge clk);
+            d1_wren <= 1'b0; d1_ena <= 1'b0;
+            d2_wren <= 1'b0; d2_ena <= 1'b0;
+            $fclose(f);
+            $display("[TB] Decay mem L%0d caricata (%0d parole)", port, i);
         end
     endtask
 
@@ -388,17 +483,21 @@ module syntzulu_tb_snn_lp;
         // 0) Carico gli stream di spike dai file
         load_spike_files();
 
-        // 1) Reset
+        // 1) Reset. La instruction mem va scritta MENTRE rst e' alto: la sua
+        //    FSM interna resta ferma e non latcha istruzioni sbagliate.
         rst = 1'b1;
         repeat (RESET_CYCLES_HIGH) @(posedge clk);
+        load_instr_mem();
         rst = 1'b0;
         repeat (RESET_CYCLES_LOW)  @(posedge clk);
 
-        // 2) Carico le due memorie pesi 32-bit da weights.txt
+        // 2) Carico pesi e decay/threshold via porte
         load_weight_mem(1, L1_BYTE_OFFSET);   // layer 1 -> porta L1
         load_weight_mem(2, L2_BYTE_OFFSET);   // layer 2 -> porta L2
+        load_decay_mem(1);                    // decay/threshold layer 1
+        load_decay_mem(2);                    // decay/threshold layer 2
         repeat (POST_WEIGHTS_CYCLES) @(posedge clk);
-        $display("[TB] Pesi caricati. Decay/threshold autoinizializzate via BRAM init.");
+        $display("[TB] Pesi e decay/threshold caricati via porte.");
 
         // 3) Streammo NUM_FRAMES frame, sincronizzandomi sul valid top-level
         for (f = 0; f < NUM_FRAMES; f = f + 1) begin

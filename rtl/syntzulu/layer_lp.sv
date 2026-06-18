@@ -60,6 +60,13 @@ module layer_lp
     input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L1_wr_addr,
     input [31:0] weight_mem_L1_data_in,
     input weight_mem_L1_ena,
+
+    // scrittura decay/threshold mem (caricamento esterno)
+    input decay_mem_wren,
+    input [clogb2(DEPTH_FIFO-1)-1:0] decay_mem_wr_addr,
+    input [31:0] decay_mem_data_in,
+    input decay_mem_ena,
+
     output [7:0] weight_debug,
     output weight_en_debug,
     output weights_buffer_ready,
@@ -219,7 +226,11 @@ module layer_lp
 	.num_input_feature(num_input_feature),
 	.M(M),
 	.reset_recurrency(reset_recurrency),
-	.first_layer_no_spike(first_layer_no_spike)
+	.first_layer_no_spike(first_layer_no_spike),
+	.decay_wren(decay_mem_wren),
+	.decay_wr_addr(decay_mem_wr_addr),
+	.decay_data_in(decay_mem_data_in),
+	.decay_ena(decay_mem_ena)
     );
 
 

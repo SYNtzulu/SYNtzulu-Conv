@@ -33,7 +33,13 @@ module neuron_lp#(
     input [clogb2(MAX_INPUT_FEATURE)-1:0] num_input_feature,
     input  [11:0] M,
     input [15:0] reset_recurrency,
-    input first_layer_no_spike
+    input first_layer_no_spike,
+
+    // scrittura decay/threshold mem (caricamento esterno)
+    input decay_wren,
+    input [clogb2(DEPTH-1)-1:0] decay_wr_addr,
+    input [31:0] decay_data_in,
+    input decay_ena
     );
 
     localparam CURRENT_WIDTH = 2*(WEIGHTS+1);
@@ -77,7 +83,11 @@ module neuron_lp#(
       .num_input_feature(num_input_feature),
       .M(M),
       .reset_recurrency(reset_recurrency),
-      .first_layer_no_spike(first_layer_no_spike)
+      .first_layer_no_spike(first_layer_no_spike),
+      .decay_wren(decay_wren),
+      .decay_wr_addr(decay_wr_addr),
+      .decay_data_in(decay_data_in),
+      .decay_ena(decay_ena)
       //.set_address(set_address)
     );
 
