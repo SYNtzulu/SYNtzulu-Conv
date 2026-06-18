@@ -2,6 +2,7 @@
 output/
 work/
 emg/
+debug/
 
 # File di simulazione
 *.vcd

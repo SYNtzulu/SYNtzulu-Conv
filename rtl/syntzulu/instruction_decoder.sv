@@ -8,8 +8,6 @@ module instruction_decoder #(
     output wire [1:0]  layer_type,               // [79:78]
     output wire [6:0]  neuron,                   // [77:71]
     output wire [6:0]  synapses,                 // [70:64]
-    output wire [11:0] voltage_decay,            // [63:52]
-    output wire [15:0] threshold,                // [51:36]
     output wire [3:0]  next_dim_input_feature,   // [35:31]
     output wire [2:0]  bit_for_spike,            // [30:28]
 
@@ -35,10 +33,8 @@ module instruction_decoder #(
     assign layer_type             = (instr[79:78]==2'b11) ? 2'b01 : instr[79:78];
     assign neuron                 = instr[77:71];
     assign bit_for_spike          = instr[66:64];
-    assign voltage_decay          = 0 ;//instr[63:52];  //unused
-    assign M                      = instr[63:52];  	
-    assign threshold              = 0; //instr[51:36];  //unused
-    assign reset_recurrency       = instr[51:36];  
+    assign M                      = instr[63:52];
+    assign reset_recurrency       = instr[51:36];
     assign next_dim_input_feature = instr[35:32];
     
     // === SOLO CONV ===

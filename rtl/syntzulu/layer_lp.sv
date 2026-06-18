@@ -5,7 +5,6 @@ module layer_lp
     parameter WIDTH = 25,
     parameter MAX_SYNAPSES = 256,
     parameter MAX_NEURONS = 256,
-    parameter MAX_DECAY = 4096,
     parameter MAX_INPUT_FEATURE = 16,
     parameter DEPTH_FIFO = 1024,
     
@@ -23,8 +22,6 @@ module layer_lp
     input active_group_in,
 
     input layer_type,
-    input [clogb2(MAX_DECAY-1)-1:0] current_decay, voltage_decay,
-    input [WIDTH-1:0] threshold,
     input new_inference_start,
 
     //fifo module
@@ -61,12 +58,8 @@ module layer_lp
     
     input weight_mem_L1_wren,
     input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L1_wr_addr,
-    input [15:0] weight_mem_L1_data_in,
+    input [31:0] weight_mem_L1_data_in,
     input weight_mem_L1_ena,
-    input weight_mem_L2_wren,
-    input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L2_wr_addr,
-    input [15:0] weight_mem_L2_data_in,
-    input weight_mem_L2_ena,
     output [7:0] weight_debug,
     output weight_en_debug,
     output weights_buffer_ready,
@@ -96,58 +89,33 @@ module layer_lp
 
     localparam WEIGHT = 8;  
 
-    wire [15:0] weights_out_1;   
-    wire [15:0] weights_out_2;   
-
-    SPRAM_singlePort_readFirst #(
-        .RAM_WIDTH(16),                  // Specify RAM data width
-        .RAM_DEPTH(4096),             // Specify RAM depth (number of entries)
-        .RAM_PERFORMANCE("HIGH_PERFORMANCE"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
-        .INIT_FILE(WEIGHTS_FILE_1)             // Specify name/location of RAM initialization file if using one (leave blank if not)
-    )weight_mem_1(
-        .addra(weight_mem_L1_wr_addr),      // Port A address bus, driven by axi bus
-        .addrb(weight_rd_addr),          // Port B address bus, it goes in the accumulator
-        .dina(weight_mem_L1_data_in),       // Port A RAM input data, driven by axi bus
-        //.dinb({64{1'b0}}),                        // write port PL side not used
-        .clk(clk),                       // Clock
-        .wea(weight_mem_L1_wren),           // Port A write enable
-        //.web(1'b0),                      // write port PL side not used
-        .ena(weight_mem_L1_ena),         // Port A RAM Enable, for additional power savings, disable port when not in use
-        .enb(1'b1),                      // Port B RAM Enable, for additional power savings, disable port when not in use
-        .rst(rst),                       // Port A and B output reset (does not affect memory contents)
-        //.regcea(1'b1),                   // Port A output register enable
-        .regceb(1'b1),                   // Port B output register enable
-        
-        //.douta(weights_mem_ctrl_ext_1),    // Port B RAM output data
-        .doutb(weights_out_1)              // Port B RAM output data
-    );
-
-    SPRAM_singlePort_readFirst #(
-        .RAM_WIDTH(16),                  // Specify RAM data width
-        .RAM_DEPTH(4096),             // Specify RAM depth (number of entries)
-        .RAM_PERFORMANCE("HIGH_PERFORMANCE"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
-        .INIT_FILE(WEIGHTS_FILE_2)             // Specify name/location of RAM initialization file if using one (leave blank if not)
-    )weight_mem_2(
-        .addra(weight_mem_L2_wr_addr),      // Port A address bus, driven by axi bus
-        .addrb(weight_rd_addr),          // Port B address bus, it goes in the accumulator
-        .dina(weight_mem_L2_data_in),       // Port A RAM input data, driven by axi bus
-        //.dinb({64{1'b0}}),                        // write port PL side not used
-        .clk(clk),                       // Clock
-        .wea(weight_mem_L2_wren),           // Port A write enable
-        //.web(1'b0),                      // write port PL side not used
-        .ena(weight_mem_L2_ena),                      // Port A RAM Enable, for additional power savings, disable port when not in use
-        .enb(1'b1),                      // Port B RAM Enable, for additional power savings, disable port when not in use
-        .rst(rst),                       // Port A and B output reset (does not affect memory contents)
-        //.regcea(1'b1),                   // Port A output register enable
-        .regceb(1'b1),                   // Port B output register enable
-        
-        //.douta(weights_mem_ctrl_ext_2),    // Port B RAM output data
-        .doutb(weights_out_2)              // Port B RAM output data
-    );
-
     wire [31:0] weights_dense;
     wire [31:0] weights_conv;
-    assign weights_dense = {weights_out_1,weights_out_2};
+
+    BRAM_singlePort_readFirst #(
+        .RAM_WIDTH(32),                        // Specify RAM data width
+        .RAM_DEPTH(WEIGHT_DEPTH),                      // Specify RAM depth (number of entries)
+        .RAM_PERFORMANCE("HIGH_PERFORMANCE"),  // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
+        .INIT_FILE(WEIGHTS_FILE_1)             // Specify name/location of RAM initialization file if using one (leave blank if not)
+    )weight_mem_1(
+        .addra(weight_mem_L1_wr_addr),         // Port A address bus, driven by axi bus
+        .addrb(weight_rd_addr),                 // Port B address bus, it goes in the accumulator
+        .dina(weight_mem_L1_data_in),          // Port A RAM input data, driven by axi bus
+
+        .clk(clk),                             // Clock
+        .wea(weight_mem_L1_wren),              // Port A write enable
+
+        .ena(weight_mem_L1_ena),               // Port A RAM Enable, for additional power savings, disable port when not in use
+        .enb(1'b1),                            // Port B RAM Enable, for additional power savings, disable port when not in use
+        .rst(rst),                             // Port A and B output reset (does not affect memory contents)
+
+        .regceb(1'b1),                         // Port B output register enable
+        
+
+        .doutb(weights_dense)                   // Port B RAM output data
+    );
+
+
 
     ///////////////////////////////////////////////////////////
     //                            _       _   _              //
@@ -224,7 +192,6 @@ module layer_lp
         .DEPTH(DEPTH_FIFO),
         .WIDTH(WIDTH),
         .WEIGHTS(WEIGHT),
-        .MAX_DECAY(MAX_DECAY),
         .MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
         .DECAY_THR_FILE(DECAY_THR_FILE)
     )neuron_lp_i(
@@ -240,8 +207,6 @@ module layer_lp
         .last_input_feature(last_input_feature),
         .synaptic_current(stimulus),
         .detection(detection),
-        .current_decay(current_decay), .voltage_decay(voltage_decay),
-        .threshold(threshold),
 
         .spike_s(spike_out),
         .voltage_ready(integrated_neuron),

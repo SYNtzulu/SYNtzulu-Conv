@@ -4,32 +4,30 @@ module snn_lp
 #(
 	parameter WIDTH = 26,
 
-	parameter MAX_SYNAPSES  = 128,
-	parameter MAX_NEURONS = 128,
-	parameter LAYERS = 4, //è pari alla profondità della memoria delle istruzioni
-	parameter MAX_DECAY = 4096,
-	parameter MAX_THRESHOLD = 65536,
-	parameter BASE_ADDRESS_WEIGHTS = 512,
+	parameter MAX_SYNAPSES              = 128,
+	parameter MAX_NEURONS               = 128,
+	parameter LAYERS                    = 4, //è pari alla profondità della memoria delle istruzioni
+	parameter BASE_ADDRESS_WEIGHTS      = 512,
 	//CONV
-	parameter MAX_INPUT_FEATURE = 16,
-	parameter MAX_KERNEL = 3,
-	parameter MAX_NUMBER_INPUT_FEATURE = 32,
+	parameter MAX_INPUT_FEATURE         = 16,
+	parameter MAX_KERNEL                = 3,
+	parameter MAX_NUMBER_INPUT_FEATURE  = 32,
 	parameter MAX_NUMBER_OUTPUT_FEATURE = 32,
-	parameter DEPTH_FIFO = 1024, // profondità della fifo
+	parameter DEPTH_FIFO                = 1024, // profondità della fifo
 
-	parameter INSTR_WIDTH = 80,
-	parameter INSTR_FILE = "/flash/src/instruction.hex",
+	parameter INSTR_WIDTH               = 80,
+	parameter INSTR_FILE                = "/flash/src/instruction.hex",
 
-	parameter WEIGHTS_FILE_1 = "/flash/src/weights_1.txt",
-	parameter WEIGHTS_FILE_2 = "/flash/src/weights_2.txt",
-	parameter WEIGHTS_FILE_3 = "/flash/src/weights_3.txt",
-	parameter WEIGHTS_FILE_4 = "/flash/src/weights_4.txt",
+	parameter WEIGHTS_FILE_1            = "/flash/src/weights_1.txt",
+	parameter WEIGHTS_FILE_2            = "/flash/src/weights_2.txt",
+	parameter WEIGHTS_FILE_3            = "/flash/src/weights_3.txt",
+	parameter WEIGHTS_FILE_4            = "/flash/src/weights_4.txt",
 
-	parameter WEIGHT_DEPTH_12 = 8192,
-	parameter WEIGHT_DEPTH_34 = 8192,
+	parameter WEIGHT_DEPTH_12           = 4096,
+	parameter WEIGHT_DEPTH_34           = 4096,
 
 	// Cartella dati per le memorie decay/threshold (override dal testbench)
-	parameter DATA_DIR = "mnist"
+	parameter DATA_DIR                  = "mnist"
 )
     (
     // input
@@ -42,48 +40,23 @@ module snn_lp
 
     // output
     output valid,	
-	output valid_spike,
+    output valid_spike,
     output [3:0] spike_out,
-	output integrated_neuron,
-    //output new_instruction,
+    output integrated_neuron,
 
-    // weight mem 1
+    // weight mem 1 (layer 1)
     input weight_mem_L1_wren,
     input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L1_wr_addr,
-    input [16-1:0] weight_mem_L1_data_in,
+    input [32-1:0] weight_mem_L1_data_in,
     input weight_mem_L1_ena,
 
-    // weight mem 2
+    // weight mem 2 (layer 2)
     input weight_mem_L2_wren,
-    input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L2_wr_addr,
-    input [16-1:0] weight_mem_L2_data_in,
+    input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L2_wr_addr,
+    input [32-1:0] weight_mem_L2_data_in,
     input weight_mem_L2_ena,
 
-    // weight mem 3
-    input weight_mem_L3_wren,
-    input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L3_wr_addr,
-    input [16-1:0] weight_mem_L3_data_in,
-    input weight_mem_L3_ena,
-
-    // weight mem 4
-    input weight_mem_L4_wren,
-    input [clogb2(WEIGHT_DEPTH_34-1)-1:0] weight_mem_L4_wr_addr,
-    input [16-1:0] weight_mem_L4_data_in,
-    input weight_mem_L4_ena,
-/*
-    input wire wen_instr,
-    input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_instr,
-    input wire [15:0] wr_data_instr,
-*/
-   /*
-    //spike mem 1 & 2
-	output wire [31:0] o_spike_mem_dat,
-	input wire [7:0] i_spike_mem_adr,
-	input wire [1:0] i_spike_mem_rd_en,
-	input wire [1:0] i_spike_mem_wr_en,
-	input wire [3:0] i_spike_mem_dat,*/
-
-	// output buffer access
+	
     output wire signed [WIDTH-1:0] voltage_1,
     output wire signed [WIDTH-1:0] voltage_2,
     output s1, s2,
@@ -133,9 +106,6 @@ instruction_memory #(
 wire [1:0]                           layer_type;
 wire [clogb2(MAX_NEURONS)-1:0]       neuron;
 wire [clogb2(MAX_SYNAPSES)-1:0]      synapses;
-wire [clogb2(MAX_DECAY)-1:0]         current_decay;
-wire [clogb2(MAX_DECAY)-1:0]         voltage_decay;
-wire [clogb2(MAX_THRESHOLD)-1:0]     threshold;
 wire [3:0]                           bit_for_spike;
 wire [clogb2(MAX_INPUT_FEATURE):0]   number_input_feature;
 wire [clogb2(MAX_INPUT_FEATURE)-1:0] number_output_feature;
@@ -161,8 +131,6 @@ instruction_decoder #(
     .neuron(neuron),
     .synapses(synapses),
     .next_dim_input_feature(next_dim_input_feature),
-    .voltage_decay(voltage_decay),
-    .threshold(threshold),
     .bit_for_spike(bit_for_spike),
     .number_input_feature(number_input_feature),
     .number_output_feature(number_output_feature),
@@ -247,7 +215,6 @@ layer_lp
 	.WIDTH(WIDTH),
 	.MAX_SYNAPSES(MAX_SYNAPSES),
 	.MAX_NEURONS(MAX_NEURONS/2),
-	.MAX_DECAY(MAX_DECAY),
 	.MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
 	.DEPTH_FIFO(DEPTH_FIFO),
 	.DECAY_THR_FILE ({DATA_DIR, "/decay_thr_1.txt"}),
@@ -265,9 +232,6 @@ layer_lp_l1_i
 	.spike_in(spike_mem_out),
 	.active_group_in(),
 
-	.current_decay(current_decay),
-	.voltage_decay(voltage_decay),
-	.threshold(threshold),
 	.new_inference_start(start_instruction),
 	.detection(detection_computed),
 	.reset_potential(reset_potential && flush_fifo),
@@ -301,10 +265,7 @@ layer_lp_l1_i
 	.weight_mem_L1_wr_addr(weight_mem_L1_wr_addr),
 	.weight_mem_L1_data_in(weight_mem_L1_data_in),
 	.weight_mem_L1_ena(weight_mem_L1_ena),
-	.weight_mem_L2_wren(weight_mem_L2_wren),
-	.weight_mem_L2_wr_addr(weight_mem_L2_wr_addr),
-	.weight_mem_L2_data_in(weight_mem_L2_data_in),
-	.weight_mem_L2_ena(weight_mem_L2_ena),
+
 	.weights_buffer_ready(weights_buffer_ready_L1),
 	
 	.layer_integrated(layer_integrated),
@@ -334,7 +295,6 @@ layer_lp
 	.WIDTH(WIDTH),
 	.MAX_SYNAPSES(MAX_SYNAPSES),
 	.MAX_NEURONS(MAX_NEURONS/2),
-	.MAX_DECAY(MAX_DECAY),
 	.MAX_INPUT_FEATURE(MAX_INPUT_FEATURE),
 	.DEPTH_FIFO(DEPTH_FIFO),
 	.DECAY_THR_FILE ({DATA_DIR, "/decay_thr_2.txt"}),
@@ -353,9 +313,6 @@ layer_lp_l2_i
 	.active_group_in(),
 
 	.layer_type(layer_type),
-	.current_decay(current_decay),
-	.voltage_decay(voltage_decay),
-	.threshold(threshold),
 	.new_inference_start(start_instruction),
 	.detection(detection_computed),
 	.reset_potential(reset_potential && flush_fifo),
@@ -385,14 +342,10 @@ layer_lp_l2_i
 	.first_input_feature(first_input_feature_computed), 
 	.last_input_feature(last_input_feature_out),
 
-	.weight_mem_L1_wren(weight_mem_L3_wren),
-	.weight_mem_L1_wr_addr(weight_mem_L3_wr_addr),
-	.weight_mem_L1_data_in(weight_mem_L3_data_in),
-	.weight_mem_L1_ena(weight_mem_L3_ena),
-	.weight_mem_L2_wren(weight_mem_L4_wren),
-	.weight_mem_L2_wr_addr(weight_mem_L4_wr_addr),
-	.weight_mem_L2_data_in(weight_mem_L4_data_in),
-	.weight_mem_L2_ena(weight_mem_L4_ena),
+	.weight_mem_L1_wren(weight_mem_L2_wren),
+	.weight_mem_L1_wr_addr(weight_mem_L2_wr_addr),
+	.weight_mem_L1_data_in(weight_mem_L2_data_in),
+	.weight_mem_L1_ena(weight_mem_L2_ena),
 	.weights_buffer_ready(weights_buffer_ready_L2),
 
 	.layer_integrated(layer_integrated),

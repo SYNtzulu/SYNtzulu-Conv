@@ -6,7 +6,6 @@ module neuron_lp#(
     parameter DEPTH = 256, // è il numero totale di neuroni //TODO non lo sappiamo a priori
     parameter WIDTH = 25, 
     parameter WEIGHTS = 8,
-    parameter MAX_DECAY = 4096,
     parameter MAX_INPUT_FEATURE = 16,
     parameter DECAY_THR_FILE = ""
     )(
@@ -21,9 +20,7 @@ module neuron_lp#(
     input last_input_feature,
     input new_inference_start,
     input [2*(WEIGHTS)-1:0] synaptic_current,
-    input [clogb2(MAX_DECAY-1)-1:0] current_decay, voltage_decay,
     input detection,
-    input [WIDTH-1:0] threshold,
     input clear_counter_fifo,
     
     output spike_s,
@@ -68,9 +65,7 @@ module neuron_lp#(
       .pooling_spike_enable(pooling_spike_enable),
       .first_input_feature(first_input_feature), 
       .last_input_feature(last_input_feature),
-      .decay(voltage_decay),
-      .stimolo(synaptic_current), 
-      .threshold(threshold),
+      .stimolo(synaptic_current),
       .valid(voltage_ready),
       .spike(spike_s),
       .output_new(voltage),

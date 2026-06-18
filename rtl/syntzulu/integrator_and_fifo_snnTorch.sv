@@ -38,9 +38,7 @@ module integrator_and_fifo_snnTorch #(
     input dense_enable,
     input pooling_spike_enable,
     input first_input_feature,
-    input [13:0] decay,			//unused
-    input [WIDTH-1:0] stimolo,
-    input [WIDTH-1:0] threshold,		//unused
+    input [15:0] stimolo,
     input last_input_feature,
 
     output valid,

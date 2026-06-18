@@ -1,5 +1,3 @@
-`define INPUT_CHANNELS 256
-`define INPUT_SPIKE_1 4096
 `define TIME_STEPS 10
 `define NBITS_DECAY 16
 `define NBITS_THR 16

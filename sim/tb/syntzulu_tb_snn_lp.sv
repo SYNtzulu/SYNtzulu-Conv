@@ -18,8 +18,9 @@
 //     • input_buffer_valid e' tenuto alto dal TB per tutta la durata dello
 //       streaming del frame; il rising edge genera start_instruction in snn_lp.
 //
-//  I 4 banchi pesi sono caricati da `PATH/flash.txt (offset W1..W4). Le memorie
-//  decay/threshold sono autoinizializzate via $readmemh dentro layer_lp dai
+//  I pesi (32-bit) sono caricati da `PATH/weights.txt e scritti a runtime via
+//  porte: layer 1 dalla porta weight_mem_L1, layer 2 dalla porta weight_mem_L2.
+//  Le memorie decay/threshold sono autoinizializzate via $readmemh dentro layer_lp dai
 //  file `PATH/decay_thr_1.txt / _2.txt (DATA_DIR passato a snn_lp = `PATH).
 //  La sim DEVE essere lanciata dalla root del progetto.
 // ============================================================================
@@ -33,7 +34,7 @@ module syntzulu_tb_snn_lp;
     // ---- Path dei file (relativi alla root del progetto) -------------------
     //  Tutti i path dei dati derivano da `PATH (definito in rtl/define.v):
     //  basta cambiare quella macro per puntare a un'altra cartella dataset.
-    localparam FLASH_FILE   = {`PATH, "/flash.txt"};         // pesi (formato $readmemh)
+    localparam WEIGHTS_FILE = {`PATH, "/weights.txt"};       // pesi 32-bit (4 byte/riga, $readmemh)
     localparam S1_FILE      = {`PATH, "/input_even.txt"};    // bit s1_encoding (uno per riga)
     localparam S2_FILE      = {`PATH, "/input_odd.txt"};     // bit s2_encoding (uno per riga)
     localparam INSTR_FILE   = {`PATH, "/instruction.hex"};   // istruzioni
@@ -42,25 +43,22 @@ module syntzulu_tb_snn_lp;
     localparam VCD_FILE     = "syntzulu_tb_snn_lp.vcd";                 // waveform
 
     // ---- Parametri snn_lp (specchio della configurazione servant_syntzulu) -
-    localparam WIDTH            = 16;
-    localparam CHANNELS         = `INPUT_CHANNELS; // 32
+    localparam WIDTH            = 8;
     localparam TIME_STEPS       = `TIME_STEPS;     // 10
     localparam MAX_NEURONS      = 128;
     localparam MAX_SYNAPSES     = 256;
     localparam LAYERS           = 8;
-    localparam MAX_DECAY        = 4096;
-    localparam MAX_THRESHOLD    = 65536;
     localparam INSTR_WIDTH      = 80;
-    localparam WEIGHT_DEPTH_12  = 8192;
-    localparam WEIGHT_DEPTH_34  = 8192;
+    localparam WEIGHT_DEPTH_12  = 4096;
+    localparam WEIGHT_DEPTH_34  = 4096;
 
-    // ---- Layout flash (solo regione pesi, no sample) ----------------------
-    localparam W1_OFFSET        = 0;
-    localparam W2_OFFSET        = W1_OFFSET + WEIGHT_DEPTH_12;
-    localparam W3_OFFSET        = W2_OFFSET + WEIGHT_DEPTH_12;
-    localparam W4_OFFSET        = W3_OFFSET + WEIGHT_DEPTH_12;
-    localparam WORDS_PER_BANK   = WEIGHT_DEPTH_12 / 2;       // 4096
-    localparam FLASH_BYTES      = 4 * WEIGHT_DEPTH_12;       // 32768
+    // ---- Layout weights.txt (pesi 32-bit: 4 byte per parola) --------------
+    //   8192 parole = 4096 (layer 1, porta L1) + 4096 (layer 2, porta L3).
+    //   Una sola BRAM 32-bit per layer (RAM_DEPTH 4096).
+    localparam WORDS_PER_MEM    = WEIGHT_DEPTH_12    ;       // 4096 parole per memoria
+    localparam L1_BYTE_OFFSET   = 0;                         // layer 1 -> porta L1
+    localparam L2_BYTE_OFFSET   = 4 * WORDS_PER_MEM;         // layer 2 -> porta L3 (16384)
+    localparam WEIGHTS_BYTES    = 8 * WORDS_PER_MEM;         // 32768 byte totali
 
     // ---- Stream s1/s2 -----------------------------------------------------
     //   Input feature map: INPUT_H × INPUT_W × INPUT_C  (1 bit per spike).
@@ -75,7 +73,7 @@ module syntzulu_tb_snn_lp;
     localparam MAX_BITS         = BITS_PER_FRAME * NUM_FRAMES;
 
     // ---- Tuning -----------------------------------------------------------
-    localparam MAX_ERRORS         = 10;
+    localparam MAX_ERRORS         = 0;
     localparam RESET_CYCLES_HIGH  = 10;
     localparam RESET_CYCLES_LOW   = 5;
     localparam POST_WEIGHTS_CYCLES= 50;
@@ -98,19 +96,13 @@ module syntzulu_tb_snn_lp;
     reg                                  input_buffer_valid = 1'b0;
     reg                                  reset_potential    = 1'b0;
 
-    // Porte di scrittura weight memory
-    reg                                  w1_wren = 1'b0, w1_ena = 1'b0;
+    // Porte di scrittura weight memory (una per layer, 32-bit)
+    reg                                  w1_wren = 1'b0, w1_ena = 1'b0;  // layer 1 (porta L1)
     reg [clogb2(WEIGHT_DEPTH_12-1)-1:0]  w1_addr = '0;
-    reg [15:0]                           w1_data = 16'd0;
-    reg                                  w2_wren = 1'b0, w2_ena = 1'b0;
-    reg [clogb2(WEIGHT_DEPTH_12-1)-1:0]  w2_addr = '0;
-    reg [15:0]                           w2_data = 16'd0;
-    reg                                  w3_wren = 1'b0, w3_ena = 1'b0;
-    reg [clogb2(WEIGHT_DEPTH_34-1)-1:0]  w3_addr = '0;
-    reg [15:0]                           w3_data = 16'd0;
-    reg                                  w4_wren = 1'b0, w4_ena = 1'b0;
-    reg [clogb2(WEIGHT_DEPTH_34-1)-1:0]  w4_addr = '0;
-    reg [15:0]                           w4_data = 16'd0;
+    reg [31:0]                           w1_data = 32'd0;
+    reg                                  w2_wren = 1'b0, w2_ena = 1'b0;  // layer 2 (porta L2)
+    reg [clogb2(WEIGHT_DEPTH_34-1)-1:0]  w2_addr = '0;
+    reg [31:0]                           w2_data = 32'd0;
 
     // Uscite snn_lp
     wire                    valid;
@@ -131,8 +123,6 @@ module syntzulu_tb_snn_lp;
         .MAX_SYNAPSES    (MAX_SYNAPSES),
         .MAX_NEURONS     (MAX_NEURONS),
         .LAYERS          (LAYERS),
-        .MAX_DECAY       (MAX_DECAY),
-        .MAX_THRESHOLD   (MAX_THRESHOLD),
         .INSTR_WIDTH     (INSTR_WIDTH),
         .INSTR_FILE      (INSTR_FILE),
         .DATA_DIR        (`PATH),  // cartella dati per decay_thr_*.txt (da `PATH)
@@ -155,26 +145,16 @@ module syntzulu_tb_snn_lp;
         .spike_out        (spike_out),
         .integrated_neuron(integrated_neuron),
 
-        // weight memory L1
+        // weight memory L1 (layer 1)
         .weight_mem_L1_wren    (w1_wren),
         .weight_mem_L1_wr_addr (w1_addr),
         .weight_mem_L1_data_in (w1_data),
         .weight_mem_L1_ena     (w1_ena),
-        // weight memory L2
+        // weight memory L2 (layer 2)
         .weight_mem_L2_wren    (w2_wren),
         .weight_mem_L2_wr_addr (w2_addr),
         .weight_mem_L2_data_in (w2_data),
         .weight_mem_L2_ena     (w2_ena),
-        // weight memory L3
-        .weight_mem_L3_wren    (w3_wren),
-        .weight_mem_L3_wr_addr (w3_addr),
-        .weight_mem_L3_data_in (w3_data),
-        .weight_mem_L3_ena     (w3_ena),
-        // weight memory L4
-        .weight_mem_L4_wren    (w4_wren),
-        .weight_mem_L4_wr_addr (w4_addr),
-        .weight_mem_L4_data_in (w4_data),
-        .weight_mem_L4_ena     (w4_ena),
 
         .voltage_1              (voltage_1),
         .voltage_2              (voltage_2),
@@ -220,42 +200,45 @@ module syntzulu_tb_snn_lp;
     // ========================================================================
     //  LOAD WEIGHTS (uguale al TB completo)
     // ========================================================================
-    reg [7:0] flash_mem [0:FLASH_BYTES-1];
+    reg [7:0] weights_mem [0:WEIGHTS_BYTES-1];
 
-    initial begin : load_flash
+    initial begin : load_weights
         integer i;
-        for (i = 0; i < FLASH_BYTES; i = i + 1) flash_mem[i] = 8'h00;
-        $readmemh(FLASH_FILE, flash_mem);
-        $display("[TB] Flash pesi caricato (%0d byte)", FLASH_BYTES);
+        for (i = 0; i < WEIGHTS_BYTES; i = i + 1) weights_mem[i] = 8'h00;
+        $readmemh(WEIGHTS_FILE, weights_mem);
+        $display("[TB] Pesi 32-bit caricati da %s (%0d byte)", WEIGHTS_FILE, WEIGHTS_BYTES);
     end
 
+    // Scrive una memoria pesi (32-bit, 4096 parole) tramite la porta indicata.
+    //   port = 1 -> porta weight_mem_L1 (layer 1)
+    //   port = 2 -> porta weight_mem_L2 (layer 2)
+    //   base_byte = offset in byte dentro weights_mem.
+    // Ogni parola e' impacchettata big-endian: {b0,b1,b2,b3} -> 0xb0b1b2b3.
     task automatic load_weight_mem;
-        input integer which;
-        input integer base_offset;
+        input integer port;
+        input integer base_byte;
         integer i;
-        reg [15:0] word;
+        reg [31:0] word;
         begin
-            $display("[TB] Carico WEIGHT_MEM_L%0d (flash byte %0d..%0d, %0d word)",
-                     which, base_offset,
-                     base_offset + 2*WORDS_PER_BANK - 1, WORDS_PER_BANK);
+            $display("[TB] Carico WEIGHT_MEM via porta L%0d (weights byte %0d..%0d, %0d word)",
+                     port, base_byte,
+                     base_byte + 4*WORDS_PER_MEM - 1, WORDS_PER_MEM);
 
-            for (i = 0; i < WORDS_PER_BANK; i = i + 1) begin
-                word = {flash_mem[base_offset + 2*i],
-                        flash_mem[base_offset + 2*i + 1]};
+            for (i = 0; i < WORDS_PER_MEM; i = i + 1) begin
+                word = {weights_mem[base_byte + 4*i],
+                        weights_mem[base_byte + 4*i + 1],
+                        weights_mem[base_byte + 4*i + 2],
+                        weights_mem[base_byte + 4*i + 3]};
                 @(posedge clk);
-                case (which)
+                case (port)
                     1: begin w1_wren <= 1'b1; w1_ena <= 1'b1; w1_addr <= i[12:0]; w1_data <= word; end
                     2: begin w2_wren <= 1'b1; w2_ena <= 1'b1; w2_addr <= i[12:0]; w2_data <= word; end
-                    3: begin w3_wren <= 1'b1; w3_ena <= 1'b1; w3_addr <= i[12:0]; w3_data <= word; end
-                    4: begin w4_wren <= 1'b1; w4_ena <= 1'b1; w4_addr <= i[12:0]; w4_data <= word; end
                 endcase
             end
 
             @(posedge clk);
             w1_wren <= 1'b0; w1_ena <= 1'b0;
             w2_wren <= 1'b0; w2_ena <= 1'b0;
-            w3_wren <= 1'b0; w3_ena <= 1'b0;
-            w4_wren <= 1'b0; w4_ena <= 1'b0;
         end
     endtask
 
@@ -411,11 +394,9 @@ module syntzulu_tb_snn_lp;
         rst = 1'b0;
         repeat (RESET_CYCLES_LOW)  @(posedge clk);
 
-        // 2) Carico i 4 banchi pesi
-        load_weight_mem(1, W1_OFFSET);
-        load_weight_mem(2, W2_OFFSET);
-        load_weight_mem(3, W3_OFFSET);
-        load_weight_mem(4, W4_OFFSET);
+        // 2) Carico le due memorie pesi 32-bit da weights.txt
+        load_weight_mem(1, L1_BYTE_OFFSET);   // layer 1 -> porta L1
+        load_weight_mem(2, L2_BYTE_OFFSET);   // layer 2 -> porta L2
         repeat (POST_WEIGHTS_CYCLES) @(posedge clk);
         $display("[TB] Pesi caricati. Decay/threshold autoinizializzate via BRAM init.");
 
