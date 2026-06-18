@@ -11,7 +11,6 @@ module layer_lp
     parameter LAYERS = 4, //è pari alla profondità della memoria delle istruzioni
 
     parameter WEIGHTS_FILE_1 = "weights_1.txt",
-    parameter WEIGHTS_FILE_2 = "weights_2.txt",
     parameter WEIGHT_DEPTH = 8192,
     parameter DECAY_THR_FILE = ""
     )

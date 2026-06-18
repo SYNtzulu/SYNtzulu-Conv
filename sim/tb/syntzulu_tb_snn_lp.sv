@@ -146,9 +146,7 @@ module syntzulu_tb_snn_lp;
         .DECAY_THR_FILE_1(""),    // decay mem L1 caricata a runtime via porta
         .DECAY_THR_FILE_2(""),    // decay mem L2 caricata a runtime via porta
         .WEIGHTS_FILE_1  (""),    // weight mem caricate a runtime via porte
-        .WEIGHTS_FILE_2  (""),
         .WEIGHTS_FILE_3  (""),
-        .WEIGHTS_FILE_4  (""),
         .WEIGHT_DEPTH_12 (WEIGHT_DEPTH_12),
         .WEIGHT_DEPTH_34 (WEIGHT_DEPTH_34)
     ) dut (

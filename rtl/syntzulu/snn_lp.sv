@@ -16,18 +16,16 @@ module snn_lp
 	parameter DEPTH_FIFO                = 1024, // profondità della fifo
 
 	parameter INSTR_WIDTH               = 80,
-	parameter INSTR_FILE                = "/flash/src/instruction.hex",
-
-	parameter WEIGHTS_FILE_1            = "/flash/src/weights_1.txt",
-	parameter WEIGHTS_FILE_2            = "/flash/src/weights_2.txt",
-	parameter WEIGHTS_FILE_3            = "/flash/src/weights_3.txt",
-	parameter WEIGHTS_FILE_4            = "/flash/src/weights_4.txt",
-
 	parameter WEIGHT_DEPTH_12           = 4096,
 	parameter WEIGHT_DEPTH_34           = 4096,
 
 	// Cartella dati per le memorie decay/threshold (override dal testbench)
 	parameter DATA_DIR                  = "mnist",
+	parameter INSTR_FILE                = "/flash/src/instruction.hex",
+
+	parameter WEIGHTS_FILE_1            = "/flash/src/weights_1.txt",
+	parameter WEIGHTS_FILE_3            = "/flash/src/weights_3.txt",
+
 	parameter DECAY_THR_FILE_1          = {DATA_DIR, "/decay_thr_1.txt"},
 	parameter DECAY_THR_FILE_2          = {DATA_DIR, "/decay_thr_2.txt"}
 )
@@ -85,7 +83,6 @@ module snn_lp
     );
 
 localparam LAYERS_LOG2 = clogb2(LAYERS-1);
-localparam TOTAL_NEURONS = 4*MAX_NEURONS; 
 
 localparam MAX_SYNAPSES_DENSE = 128;
 
@@ -244,7 +241,6 @@ layer_lp
 	.LAYERS(LAYERS),
 
 	.WEIGHTS_FILE_1(WEIGHTS_FILE_1),
-	.WEIGHTS_FILE_2(WEIGHTS_FILE_2),
 	.WEIGHT_DEPTH(WEIGHT_DEPTH_12)
     )
 layer_lp_l1_i
@@ -329,7 +325,6 @@ layer_lp
 	.LAYERS(LAYERS),
 
 	.WEIGHTS_FILE_1(WEIGHTS_FILE_3),
-	.WEIGHTS_FILE_2(WEIGHTS_FILE_4),
 	.WEIGHT_DEPTH(WEIGHT_DEPTH_12)
     )
 layer_lp_l2_i
