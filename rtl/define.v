@@ -1,8 +1,8 @@
 `define POTENTIAL
 // >>> SELEZIONA UN SOLO dataset (decommenta uno, lascia commentati gli altri) <<<
 //`define IEEG
-`define MNIST
-//`define OPTICAL_FLOW
+//`define MNIST
+`define OPTICAL_FLOW
 
  // Per ogni dataset:
  //   `PATH         -> nome cartella usato per TUTTI i file letti a runtime

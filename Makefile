@@ -16,7 +16,7 @@
 # ============================================================================
 
 # Nome del dataset/cartella dati (deve combaciare con `PATH in rtl/define.v)
-DATASET  ?= mnist
+DATASET  ?= optical_flow
 # Zip da cui rigenerare i dati (sovrascrivibile: make prepare_data DATA_ZIP=...)
 DATA_ZIP ?= /media/sf_cartella_condivisa_OPENHW/$(DATASET).zip
 
