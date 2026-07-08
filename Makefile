@@ -10,7 +10,7 @@ netlist:
 build:
 	cd firmware && make -B
 	yosys -p "synth_ice40 -abc9 -top soc -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/.log
-	nextpnr-ice40 --up5k --seed 0 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v 
+	nextpnr-ice40 --up5k --seed 20 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v 
 	icepack output/$(filename).asc output/$(filename).bin -s
 	
 build_stat:
