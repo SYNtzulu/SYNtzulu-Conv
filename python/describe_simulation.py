@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Decodifica il file instruction.hex (5 word da 16 bit per istruzione, 80 bit totali)
-e mostra in maniera leggibile il contenuto della simulazione SNN.
+Decodes the instruction.hex file (5 words of 16 bits per instruction, 80 bits total)
+and displays the contents of the SNN simulation in a readable way.
 
-Layout dei campi (vedi rtl/syntzulu/instruction_decoder.sv):
-    layer_type             = instr[79:78]   (11 -> mappato a 01)
+Field layout (see rtl/syntzulu/instruction_decoder.sv):
+    layer_type             = instr[79:78]   (11 -> mapped to 01)
     dense_next             = instr[79]
     kernel_size (CONV)     = instr[77:76]
     neuron (DENSE/common)  = instr[77:71]
@@ -82,12 +82,12 @@ def decode(instr: int) -> dict:
         "synapses": bits(instr, 70, 64),
         # CONV
         "kernel_size": bits(instr, 77, 76),
-        # number_input_feature: in flash e' codificato come (N-1),
-        # quindi per ottenere il numero reale di feature in ingresso aggiungiamo 1.
+        # number_input_feature: in flash it is encoded as (N-1),
+        # so to obtain the real number of input features we add 1.
         "number_input_feature": bits(instr, 75, 71) + 1,
         "stride": bits(instr, 70, 69),
         "number_output_feature": bits(instr, 68, 64) + 1,
-        # comuni
+        # common
         "bit_for_spike": bits(instr, 66, 64),
         "M_voltage_decay": bits(instr, 63, 52),
         "reset_recurrency": bits(instr, 51, 36),
@@ -193,12 +193,12 @@ def print_instruction(idx: int, words, instr_int: int, d: dict):
 
 
 def short_label(d: dict) -> str:
-    """Etichetta compatta per GTKWave: tipo di layer + variante recurrency
-    + numero input/output feature.
-    - CONV         -> recurrency = 0 e recurrency_next = 0
-    - CONV_REC_FF  -> recurrency_next = 1 (il layer successivo e' ricorrente)
-    - CONV_REC     -> recurrency = 1 (questo layer e' ricorrente)
-    Analogo per DENSE / POOL.
+    """Compact label for GTKWave: layer type + recurrency variant
+    + number of input/output features.
+    - CONV         -> recurrency = 0 and recurrency_next = 0
+    - CONV_REC_FF  -> recurrency_next = 1 (the next layer is recurrent)
+    - CONV_REC     -> recurrency = 1 (this layer is recurrent)
+    Analogous for DENSE / POOL.
     """
     lt = d["layer_type"]
     if lt == 0b01:
@@ -219,11 +219,11 @@ def short_label(d: dict) -> str:
 
 
 def write_gtkwave_filter(path: str, instrs):
-    """Genera un translate filter file per GTKWave.
-    Format: `<hex_value_uppercase_no_prefix> <label>` una mappa per riga.
-    GTKWave per i bus larghi mostra il valore in hex senza prefisso; questo
-    filter file va caricato sul segnale `instruction` via
-    tasto destro -> Data Format -> Translate Filter File -> Enable and Select.
+    """Generates a translate filter file for GTKWave.
+    Format: `<hex_value_uppercase_no_prefix> <label>` one mapping per line.
+    GTKWave for wide buses shows the value in hex without prefix; this
+    filter file must be loaded onto the `instruction` signal via
+    right click -> Data Format -> Translate Filter File -> Enable and Select.
     """
     seen = set()
     with open(path, "w") as f:
@@ -263,7 +263,7 @@ def main():
         )
         sys.exit(1)
 
-    # Il Makefile sta nella directory padre della cartella python/
+    # The Makefile is in the parent directory of the python/ folder
     makefile_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
     app = sys.argv[1]
@@ -282,24 +282,24 @@ def main():
     filter_path = os.path.join(makefile_dir, f"instruction_{app}.gtkwf")
 
     if not os.path.isfile(instr_path):
-        print(f"[error] file non trovato: {instr_path}", file=sys.stderr)
+        print(f"[error] file not found: {instr_path}", file=sys.stderr)
         sys.exit(2)
 
     config = parse_config_txt(config_path)
     consts = parse_constants_h(consts_path)
     instrs = read_instructions(instr_path)
 
-    # stampa a schermo
+    # print to screen
     emit(app, instr_path, config, consts, instrs)
 
-    # e scrive lo stesso contenuto nel file nella cartella del Makefile
+    # and write the same content to the file in the Makefile folder
     with open(output_path, "w") as f, redirect_stdout(f):
         emit(app, instr_path, config, consts, instrs)
-    print(f"\n[describe_simulation] scritto: {output_path}")
+    print(f"\n[describe_simulation] written: {output_path}")
 
-    # filter file per GTKWave: in GTKWave fai tasto destro sul segnale
+    # filter file for GTKWave: in GTKWave right click on the signal
     # `instruction` -> Data Format -> Translate Filter File -> Enable and Select
-    # e seleziona questo file.
+    # and select this file.
     write_gtkwave_filter(filter_path, instrs)
     print(f"[describe_simulation] GTKWave filter: {filter_path}")
 

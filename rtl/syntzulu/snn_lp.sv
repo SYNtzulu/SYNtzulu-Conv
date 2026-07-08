@@ -6,20 +6,20 @@ module snn_lp
 
 	parameter MAX_SYNAPSES              = 128,
 	parameter MAX_NEURONS               = 128,
-	parameter LAYERS                    = 4, //è pari alla profondità della memoria delle istruzioni
+	parameter LAYERS                    = 4, //equals the depth of the instruction memory
 	parameter BASE_ADDRESS_WEIGHTS      = 512,
 	//CONV
 	parameter MAX_INPUT_FEATURE         = 16,
 	parameter MAX_KERNEL                = 3,
 	parameter MAX_NUMBER_INPUT_FEATURE  = 32,
 	parameter MAX_NUMBER_OUTPUT_FEATURE = 32,
-	parameter DEPTH_FIFO                = 1024, // profondità della fifo
+	parameter DEPTH_FIFO                = 1024, // depth of the fifo
 
 	parameter INSTR_WIDTH               = 80,
 	parameter WEIGHT_DEPTH_12           = 4096,
 	parameter WEIGHT_DEPTH_34           = 4096,
 
-	// Cartella dati per le memorie decay/threshold (override dal testbench)
+	// Data folder for the decay/threshold memories (override from the testbench)
 	parameter DATA_DIR                  = "mnist",
 	parameter INSTR_FILE                = "/flash/src/instruction.hex",
 
@@ -412,7 +412,7 @@ reg [clogb2(LAYERS-1)-1:0] spike_written_counter;
 parameter MAX_SYNAPSES_CONV = 256;
 reg [clogb2(MAX_SYNAPSES-1)-1:0] SYNAPSES;
 
-//ATTENZIONE QUI
+//ATTENTION HERE
 
 always @(posedge clk)
     if(rst)

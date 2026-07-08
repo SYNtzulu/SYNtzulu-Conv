@@ -1,9 +1,9 @@
 `timescale 1ns / 1ps
 
-//modifico il modulo togliendo i parametri dei layer e passando il layer come ingresso
+//modify the module by removing the layer parameters and passing the layer as input
 
 module neuron_lp#(
-    parameter DEPTH = 256, // è il numero totale di neuroni //TODO non lo sappiamo a priori
+    parameter DEPTH = 256, // is the total number of neurons //TODO we don't know it a priori
     parameter WIDTH = 25, 
     parameter WEIGHTS = 8,
     parameter MAX_INPUT_FEATURE = 16,
@@ -35,7 +35,7 @@ module neuron_lp#(
     input [15:0] reset_recurrency,
     input first_layer_no_spike,
 
-    // scrittura decay/threshold mem (caricamento esterno)
+    // decay/threshold mem write (external load)
     input decay_wren,
     input [clogb2(DEPTH-1)-1:0] decay_wr_addr,
     input [31:0] decay_data_in

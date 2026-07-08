@@ -1,6 +1,6 @@
 module instruction_memory #(
     parameter RAM_WIDTH    = 16,
-    parameter INSTR_WIDTH  = 80,  // <-- da 64 a 80
+    parameter INSTR_WIDTH  = 80,  // <-- from 64 to 80
     parameter INSTR_DEPTH  = 16,
     parameter INSTR_FILE   = "flash/src/emg/instruction.hex"
 )(
@@ -8,7 +8,7 @@ module instruction_memory #(
     input  rst,
     input  new_inference_start,
     input  en,
-    // porta di scrittura (caricamento esterno da AXI/TB)
+    // write port (external loading from AXI/TB)
     input  wren,
     input  [clogb2(INSTR_DEPTH-1)-1:0] wr_addr,
     input  [15:0] data_in,
@@ -37,17 +37,17 @@ module instruction_memory #(
     initial instruction = 80'h0000000000000000;
     initial instr_parts = 80'h0000000000000000;
 
-    // BRAM 16-bit wide (single-port read-first, come tutte le altre memorie).
-    // RAM_PERFORMANCE("LOW_LATENCY") -> 1 ciclo di latenza di lettura, come la
-    // vecchia SB_RAM40_4K, quindi la FSM di assemblaggio resta invariata.
+    // BRAM 16-bit wide (single-port read-first, like all the other memories).
+    // RAM_PERFORMANCE("LOW_LATENCY") -> 1 read latency cycle, like the
+    // old SB_RAM40_4K, so the assembly FSM remains unchanged.
     BRAM_singlePort_readFirst #(
         .RAM_WIDTH(16),
         .RAM_DEPTH(INSTR_DEPTH),
         .RAM_PERFORMANCE("LOW_LATENCY"),
         .INIT_FILE(INSTR_FILE)
     ) bram (
-        .addra(wr_addr),                         // porta A: scrittura (caricamento)
-        .addrb(addr),                            // porta B: lettura (FSM)
+        .addra(wr_addr),                         // port A: write (loading)
+        .addrb(addr),                            // port B: read (FSM)
         .dina(data_in),
         .clk(clk),
         .wea(wren),
@@ -109,7 +109,7 @@ module instruction_memory #(
 
                 READ: begin
                     if (read_cnt >= 3'd1 && read_cnt <= 3'd5) begin
-                        // shift left 16 bit e aggiungi la nuova parola
+                        // shift left 16 bits and append the new word
                         instr_parts <= {instr_parts[INSTR_WIDTH-17:0], bram_out};
                     end
                     read_cnt <= read_cnt + 1;

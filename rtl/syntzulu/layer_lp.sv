@@ -8,7 +8,7 @@ module layer_lp
     parameter MAX_INPUT_FEATURE = 16,
     parameter DEPTH_FIFO = 1024,
     
-    parameter LAYERS = 4, //è pari alla profondità della memoria delle istruzioni
+    parameter LAYERS = 4, //equals the depth of the instruction memory
 
     parameter WEIGHTS_FILE_1 = "weights_1.txt",
     parameter WEIGHT_DEPTH = 8192,
@@ -59,7 +59,7 @@ module layer_lp
     input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L1_wr_addr,
     input [31:0] weight_mem_L1_data_in,
 
-    // scrittura decay/threshold mem (caricamento esterno)
+    // decay/threshold mem write (external loading)
     input decay_mem_wren,
     input [clogb2(DEPTH_FIFO-1)-1:0] decay_mem_wr_addr,
     input [31:0] decay_mem_data_in,
@@ -96,7 +96,9 @@ module layer_lp
     wire [31:0] weights_dense;
     wire [31:0] weights_conv;
 
-    BRAM_singlePort_readFirst #(
+    BRAM_singlePort_readFirst 
+    //weight_memory_sram
+     #(
         .RAM_WIDTH(32),                        // Specify RAM data width
         .RAM_DEPTH(WEIGHT_DEPTH),                      // Specify RAM depth (number of entries)
         .RAM_PERFORMANCE("HIGH_PERFORMANCE"),  // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 

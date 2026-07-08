@@ -1,14 +1,14 @@
 `define POTENTIAL
-// >>> SELEZIONA UN SOLO dataset (decommenta uno, lascia commentati gli altri) <<<
+// >>> SELECT ONLY ONE dataset (uncomment one, leave the others commented) <<<
 //`define IEEG
 //`define MNIST
 `define OPTICAL_FLOW
 
- // Per ogni dataset:
- //   `PATH         -> nome cartella usato per TUTTI i file letti a runtime
+ // For each dataset:
+ //   `PATH         -> folder name used for ALL files read at runtime
  //                    (flash, input_even/odd, decay_thr, instruction, snn_inference, ...)
- //   `CONFIG_PATH  -> path del config.txt; deve restare un literal perche'
- //                    l'`include non accetta concatenazioni di macro.
+ //   `CONFIG_PATH  -> path of config.txt; must remain a literal because
+ //                    `include does not accept macro concatenations.
 
 `ifdef IEEG
 	`define PATH "ieeg"

@@ -16,21 +16,21 @@ module priority_encoder #(
 	output valid_pooling_spike,
 	output last_spike
 );  	
-	// Mappatura della matrice 3x3 in colonne
+	// Mapping of the 3x3 matrix into columns
 	wire [2:0] kernel_col0 = {kernel[6], kernel[3], kernel[0]};
 	wire [2:0] kernel_col1 = {kernel[7], kernel[4], kernel[1]};
 	wire [2:0] kernel_col2 = {kernel[8], kernel[5], kernel[2]};
 
-	wire [3:0] spike_address_0; //indirizzo dello spike 0
-	wire [3:0] spike_address_1; //indirizzo dello spike 1
-	wire [3:0] spike_address_2; //indirizzo dello spike 2
-	wire [3:0] spike_address_3; //indirizzo dello spike 3
+	wire [3:0] spike_address_0; //address of spike 0
+	wire [3:0] spike_address_1; //address of spike 1
+	wire [3:0] spike_address_2; //address of spike 2
+	wire [3:0] spike_address_3; //address of spike 3
 
-	assign spike_address = (conv_enable) ? {spike_address_3, spike_address_2, spike_address_1, spike_address_0} : 16'hBBBB; //composizione indirizzo finale
+	assign spike_address = (conv_enable) ? {spike_address_3, spike_address_2, spike_address_1, spike_address_0} : 16'hBBBB; //final address composition
 	
-	wire [1:0] C0, C1, C2; //indica quanti spike ci sono in ogni colonna
-	wire [7:0] column_sel; //indica le colonne (2bit a colonna) dove ci sono gli spike attivi
-	wire [2:0] R_PE0, R_PE1, R_PE2, R_PE3; //sono le righe in ingresso all'encoder (uno per encoder)
+	wire [1:0] C0, C1, C2; //indicates how many spikes there are in each column
+	wire [7:0] column_sel; //indicates the columns (2 bits per column) where the active spikes are
+	wire [2:0] R_PE0, R_PE1, R_PE2, R_PE3; //are the input rows to the encoder (one per encoder)
 	
 	wire [1:0] spike_address_row_PE3, spike_address_row_PE2, spike_address_row_PE1, spike_address_row_PE0;
 	
@@ -115,7 +115,7 @@ module priority_encoder #(
 		
 	end
 
-	assign PE_finish_pulse = PE_finish && !PE_finish_d; //Genera un impulso quando PE_finish passa da 0 a 1\
+	assign PE_finish_pulse = PE_finish && !PE_finish_d; //Generates a pulse when PE_finish transitions from 0 to 1\
 
 	function integer clogb2(input integer value);
         integer i;
@@ -132,7 +132,7 @@ endmodule
 module column_selection(
 	input [2:0] kernel_col0, kernel_col1, kernel_col2,
 	output [1:0] C0_in, C1_in, C2_in,
-	output reg[7:0] sel  //selettore mux per controllo colonna in ingresso a PE
+	output reg[7:0] sel  //mux selector for controlling the input column to PE
 );
 	integer i;
 	//wire [1:0] counts [3:0];
@@ -143,9 +143,9 @@ module column_selection(
 	
 	always @(*) 
 		begin
-		// Inizializzo i contatori
+		// Initialize the counters
 		{C0, C1, C2} = {C0_in, C1_in, C2_in};
-		sel = 8'b11111111; // Default a 2'b11
+		sel = 8'b11111111; // Default to 2'b11
 
 		casex ({C0 > 0, C1 > 0, C2 > 0})
 		3'b1xx: begin sel[1:0] = 2'b00; C0 = C0 - 1; end
@@ -202,7 +202,7 @@ module encoder_system(
     output [3:0] spike_address_PE3, spike_address_PE2, spike_address_PE1, spike_address_PE0
 );
 
-    // Calcolo rank
+    // Rank computation
     wire [1:0] rank0;
     wire [1:0] rank1;
     wire [1:0] rank2;
@@ -222,7 +222,7 @@ module encoder_system(
             if (rank[0]) first_one = 2'd0;
             else if (rank[1]) first_one = 2'd1;
             else if (rank[2]) first_one = 2'd2;
-            else first_one = 2'd3; // nessuna
+            else first_one = 2'd3; // none
         end
     endfunction
 
@@ -260,7 +260,7 @@ module encoder_system(
     wire [1:0] spike_address_row_PE2 = choose_spike(R_PE2, rank2);
     wire [1:0] spike_address_row_PE3 = choose_spike(R_PE3, rank3);
 
-    // Composizione indirizzo (row,col)
+    // Address composition (row,col)
     wire [3:0] temp_PE0 = {spike_address_row_PE0, sel[1:0]};
     wire [3:0] temp_PE1 = {spike_address_row_PE1, sel[3:2]};
     wire [3:0] temp_PE2 = {spike_address_row_PE2, sel[5:4]};
@@ -295,11 +295,11 @@ module encoder_system_old(
 	input wire [1:0] C0, C1, C2,
 	output [3:0] spike_address_PE3, spike_address_PE2, spike_address_PE1, spike_address_PE0
 );  
-	wire [1:0] spike_address_row_PE3, spike_address_row_PE2, spike_address_row_PE1, spike_address_row_PE0; //uscite definitive con indirizzo della riga dove c'è lo spike nella colonna selezionata
-	wire [1:0] spike_address_row_PE1_1, spike_address_row_PE1_2, spike_address_row_PE2_1, spike_address_row_PE2_2, spike_address_row_PE2_3, spike_address_row_PE3_1, spike_address_row_PE3_2, spike_address_row_PE3_3; //uscite intermedie
+	wire [1:0] spike_address_row_PE3, spike_address_row_PE2, spike_address_row_PE1, spike_address_row_PE0; //final outputs with the address of the row where the spike is in the selected column
+	wire [1:0] spike_address_row_PE1_1, spike_address_row_PE1_2, spike_address_row_PE2_1, spike_address_row_PE2_2, spike_address_row_PE2_3, spike_address_row_PE3_1, spike_address_row_PE3_2, spike_address_row_PE3_3; //intermediate outputs
 	
 	wire sel_PE1;
-	wire [1:0] sel_PE2, sel_PE3; //sono i selettori dei mux in uscita da ogni PE
+	wire [1:0] sel_PE2, sel_PE3; //are the selectors of the output mux from each PE
 	
 	//PE0
 	assign spike_address_row_PE0 = (R_PE0[0] == 1) ? 0 : (R_PE0[1] == 1) ? 1 : 2;
@@ -328,7 +328,7 @@ module encoder_system_old(
 	assign spike_address_row_PE3 = (sel_PE3 == 0) ? spike_address_row_PE3_1 : 
 					(sel_PE3 == 1) ? spike_address_row_PE3_2 : spike_address_row_PE3_3; 
 	
-	//Composizione indirizzo dello spike
+	//Spike address composition
 	function [3:0] correct_address;
         input [3:0] addr;
         begin
@@ -339,7 +339,7 @@ module encoder_system_old(
                 4'b1000: correct_address = 4'b0110;  // 8 → 6
                 4'b1001: correct_address = 4'b0111;  // 9 → 7
                 4'b1010: correct_address = 4'b1000;  // 10 → 8
-                default: correct_address = addr;  // Mantieni gli altri
+                default: correct_address = addr;  // Keep the others
             endcase
         end
 	endfunction

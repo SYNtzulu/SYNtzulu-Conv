@@ -1,41 +1,59 @@
 # ============================================================================
-#  Makefile minimale — simulazione standalone di snn_lp (dataset generico)
+#  Minimal Makefile — standalone simulation of snn_lp (generic dataset)
 #  ----------------------------------------------------------------------------
-#  PRIMA DI TUTTO attivare la toolchain oss-cad-suite (una volta per shell):
-#      source ../gianluca_oss/oss-cad-suite/environment
+#  FIRST OF ALL activate the oss-cad-suite toolchain (once per shell):
+#      source <path-to>/oss-cad-suite/environment
 #
-#  FLUSSO TIPICO:
-#      make prepare_data                  # estrae lo zip nella cartella dataset
-#      make simulate_syntzulu_snn_lp      # compila + simula
+#  TYPICAL FLOW:
+#      make prepare_data                  # extract the zip into the dataset folder
+#      make simulate_syntzulu_snn_lp      # compile + simulate
+#      make wave                          # open the waveform in GTKWave (optional)
 #
-#  Il dataset attivo è scelto dalla macro `PATH in rtl/define.v.
-#  La variabile DATASET qui sotto DEVE combaciare con quel nome.
-#  Il testbench legge TUTTI i suoi file dalla cartella $(DATASET)/:
+#  The active dataset is selected by the `PATH macro in rtl/define.v.
+#  The DATASET variable below MUST match that name.
+#  The testbench reads ALL of its files from the $(DATASET)/ folder:
 #      flash.txt  input_even.txt  input_odd.txt  instruction.hex
 #      snn_inference.txt  config.txt  decay_thr_1.txt  decay_thr_2.txt
 # ============================================================================
 
-# Nome del dataset/cartella dati (deve combaciare con `PATH in rtl/define.v)
+# Toolchain executables (override to point at a different install)
+IVERILOG ?= iverilog
+VVP      ?= vvp
+GTKWAVE  ?= gtkwave
+
+# Dataset/data folder name (must match the `PATH macro in rtl/define.v)
 DATASET  ?= optical_flow
-# Zip da cui rigenerare i dati (sovrascrivibile: make prepare_data DATA_ZIP=...)
+# Zip the data is regenerated from (override: make prepare_data DATA_ZIP=...)
 DATA_ZIP ?= /media/sf_cartella_condivisa_OPENHW/$(DATASET).zip
 
-# Rigenera i dati: elimina la vecchia cartella ed estrae lo zip.
-# NB: rimuove anche lo zip sorgente dopo l'estrazione.
+# Simulation artifacts
+SIM_BIN  := rtl_sim_snn_lp
+VCD      := syntzulu_tb_snn_lp.vcd
+
+# Source lists (tc_sram.sv is excluded: the sim uses tc_sram_fake.sv instead)
+RTL_SRCS := sim/tb/syntzulu_tb_snn_lp.sv \
+            $(wildcard rtl/syntzulu/*.sv) $(wildcard rtl/syntzulu/*.v) \
+            $(filter-out rtl/primitive/tc_sram.sv,$(wildcard rtl/primitive/*.sv))
+
+.PHONY: prepare_data simulate_syntzulu_snn_lp wave clean
+
+# Regenerate the data: remove the old folder and extract the zip.
+# The source zip is left in place.
 prepare_data:
 	rm -rf $(DATASET)
 	unzip $(DATA_ZIP) -d ./
-	rm    $(DATA_ZIP)
 
-# Compila ed esegue la simulazione del testbench snn_lp standalone.
+# Compile and run the standalone snn_lp testbench simulation.
 simulate_syntzulu_snn_lp:
 	mkdir -p work
-	iverilog -o rtl_sim_snn_lp \
-		sim/tb/syntzulu_tb_snn_lp.sv \
-		rtl/syntzulu/*.sv rtl/syntzulu/*.v
-	vvp rtl_sim_snn_lp
-	rm -f rtl_sim_snn_lp
-	gtkwave --save=work/debug_snn_lp.gtkw syntzulu_tb_snn_lp.vcd &
+	$(IVERILOG) -g2012 -o $(SIM_BIN) $(RTL_SRCS)
+	$(VVP) $(SIM_BIN)
+	rm -f $(SIM_BIN)
+
+# Open the generated waveform in GTKWave (separate from the sim so the
+# simulate target stays headless/CI friendly).
+wave:
+	$(GTKWAVE) --save=work/debug_snn_lp.gtkw $(VCD) &
 
 clean:
-	rm -f *.vcd rtl_sim_snn_lp work/*.vcd
+	rm -f *.vcd $(SIM_BIN) work/*.vcd

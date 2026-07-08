@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
-// Precisione dei bit letta da config.txt (incluso tramite `include `CONFIG_PATH).
-// I default qui sotto valgono solo come fallback (es. testbench standalone).
+// Bit precision read from config.txt (included via `include `CONFIG_PATH).
+// The defaults below only serve as a fallback (e.g. standalone testbench).
 `ifndef NBITS_M
   `define NBITS_M 16
 `endif
@@ -55,7 +55,7 @@ module integrator_and_fifo_snnTorch #(
     input [15:0] reset_recurrency,
     input first_layer_no_spike,
 
-    // scrittura decay/threshold mem (caricamento esterno)
+    // decay/threshold mem write (external loading)
     input decay_wren,
     input [clogb2(DEPTH-1)-1:0] decay_wr_addr,
     input [nbits_decay + nbits_thr -1:0] decay_data_in
@@ -109,7 +109,7 @@ module integrator_and_fifo_snnTorch #(
     // DECAY AND THRESHOLD PER LAYER
     dec_thr_mem #(
         .DATA_WIDTH(nbits_decay + nbits_thr), 
-        .DEPTH(DEPTH),
+        .DEPTH(128),
         .DECAY_THR_FILE(DECAY_THR_FILE)
     ) dec_thr_mem_i (
         .clk(clk),

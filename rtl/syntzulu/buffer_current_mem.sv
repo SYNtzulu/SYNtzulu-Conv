@@ -7,13 +7,13 @@ module buffer_current_mem
 (
 	input clk, rst, en,
 
-	// dim^2 dell'output feature: numero di posizioni (=cicli di `en`) per
-	// ogni input feature. adr scorre 0..square_dim_output_feature-1
+	// dim^2 of the output feature: number of positions (= `en` cycles) per
+	// each input feature. adr runs 0..square_dim_output_feature-1
 	input [7:0] square_dim_output_feature,
 
-	// numero totale di input feature da accumulare. Usato per stabilire:
-	//   - quando azzerare l'accumulo (prima input feature)
-	//   - quando alzare valid_buffer_current (ultima input feature)
+	// total number of input features to accumulate. Used to establish:
+	//   - when to zero the accumulation (first input feature)
+	//   - when to raise valid_buffer_current (last input feature)
 	input [clogb2(MAX_INPUT_FEATURE)-1:0] num_input_feature,
 
 	input signed [15:0] stimolo,
@@ -24,9 +24,9 @@ module buffer_current_mem
 );
 
 	// ----------------------------------------------------------------------
-	// Counter di posizione dentro la input feature corrente.
-	//   adr scorre 0,1,...,square_dim_output_feature-1 e poi torna a 0
-	//   solo sui cicli in cui `en` è alto.
+	// Position counter within the current input feature.
+	//   adr runs 0,1,...,square_dim_output_feature-1 and then returns to 0
+	//   only on the cycles when `en` is high.
 	// ----------------------------------------------------------------------
 	reg [7:0] adr;
 	wire pos_wrap = (adr == square_dim_output_feature);
@@ -43,19 +43,19 @@ module buffer_current_mem
 	end
 
 	// ----------------------------------------------------------------------
-	// Counter delle input feature: indica quante "passate" di
-	// square_dim_output_feature sono state completate.
-	//   feat_cnt == 0                   -> stiamo elaborando la PRIMA input
-	//                                       feature: accumuliamo su zero
+	// Input feature counter: indicates how many "passes" of
+	// square_dim_output_feature have been completed.
+	//   feat_cnt == 0                   -> we are processing the FIRST input
+	//                                       feature: we accumulate onto zero
 	//                                       (mem[adr] <= stimolo).
-	//   feat_cnt > 0                    -> accumuliamo (mem[adr] += stimolo).
-	//   feat_cnt == num_input_feature-2 -> condizione di "valid alto" come
-	//                                       richiesto: si setta
-	//                                       valid_buffer_current per tutta
-	//                                       la durata di questa passata.
-	//   feat_cnt rolla a 0 dopo num_input_feature-1, così al giro successivo
-	//   si torna ad accumulare su zero (richiesto: "al giro dopo devo
-	//   sommare di nuovo a zero").
+	//   feat_cnt > 0                    -> we accumulate (mem[adr] += stimolo).
+	//   feat_cnt == num_input_feature-2 -> "valid high" condition as
+	//                                       required: valid_buffer_current is
+	//                                       set for the whole
+	//                                       duration of this pass.
+	//   feat_cnt rolls to 0 after num_input_feature-1, so on the next round
+	//   we go back to accumulating onto zero (required: "on the next round I
+	//   must sum onto zero again").
 	// ----------------------------------------------------------------------
 	reg [clogb2(MAX_INPUT_FEATURE)-1:0] feat_cnt;
 
@@ -74,12 +74,12 @@ module buffer_current_mem
 	wire is_valid_phase   = (feat_cnt == num_input_feature);
 
 	// ----------------------------------------------------------------------
-	// BRAM accumulatrice
+	// Accumulator BRAM
 	// ----------------------------------------------------------------------
 	reg [WIDTH-1:0] mem [ROW-1:0];
 	
 	wire signed [WIDTH-1:0] stimolo_eff;
-	assign stimolo_eff = first_layer_no_spike ? stimolo <<< feat_cnt[2:0] : stimolo; // [2:0] equivalente a IF%8
+	assign stimolo_eff = first_layer_no_spike ? stimolo <<< feat_cnt[2:0] : stimolo; // [2:0] equivalent to IF%8
 	
 
 	always @(posedge clk) begin
@@ -96,7 +96,7 @@ module buffer_current_mem
 	end
 
 	// ----------------------------------------------------------------------
-	// valid_buffer_current alto durante la passata indicata da is_valid_phase
+	// valid_buffer_current high during the pass indicated by is_valid_phase
 	// (= feat_cnt == num_input_feature - 2).
 	// ----------------------------------------------------------------------
 	always @(posedge clk) begin

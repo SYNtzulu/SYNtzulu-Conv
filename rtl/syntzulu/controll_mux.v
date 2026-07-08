@@ -39,13 +39,13 @@ module controll_mux#(
 			next_state <= 0;
 		end else if(conv_enable) begin
 			if (en && input_feature_ready) begin
-				// Calcola prossimo stato
+				// Compute next state
 				next_state = (state <= stride - padding) ? last_state : state - stride;
-				// Aggiorna stato
+				// Update state
 				state <= next_state;
 			end
 			else if (input_feature_ready && !input_feature_ready_d) begin
-				// Se input_feature_ready è appena diventato alto, aggiorna stato
+				// If input_feature_ready has just gone high, update state
 				state <= last_state;
 				next_state <= last_state;
 			end

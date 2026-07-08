@@ -20,15 +20,15 @@ module conv_controll_2 #(
     input [clogb2(MAX_NUMBER_OUTPUT_FEATURE):0] number_output_feature,
     input [3:0] dim_output_feature,
 
-    input [MAX_INPUT_FEATURE-1:0] input_feature_row, //riga dell'input feature letta dalla spike_mem
+    input [MAX_INPUT_FEATURE-1:0] input_feature_row, //row of the input feature read from the spike_mem
     input [clogb2(WEIGHT_DEPTH)-1:0]base_address_weights,
     input weights_buffer_ready,
     input spike_written,
 
     output new_kernel,
     output spike_check,
-    output set_fifo_neuron_address, //segnale che mi dice che devo settare l'indirizzo della fifo dei neuroni
-    output [15:0] spike_address, //indirizzi di 4 spike attivi
+    output set_fifo_neuron_address, //signal telling me that I must set the address of the neuron fifo
+    output [15:0] spike_address, //addresses of 4 active spikes
     output reg convolution_finish,
     output reg write_en_weight_buffer,
     output reg [clogb2(WEIGHT_DEPTH)-1:0] weight_rd_addr,
@@ -143,9 +143,9 @@ module conv_controll_2 #(
     assign last_input_feature = (input_feature_cnt == number_input_feature);
     assign last_output_feature = (output_feature_cnt <= number_output_feature - 2);
 
-    assign set_fifo_neuron_address = (en && input_feature_finish); //segnale che mi dice che devo settare l'indirizzo della fifo dei neuroni
+    assign set_fifo_neuron_address = (en && input_feature_finish); //signal telling me that I must set the address of the neuron fifo
 
-    // RIEMPIMENTO INPUT_FEATURE
+    // INPUT_FEATURE FILLING
 
     reg [1:0] row_counter;
     always @(posedge clk)
@@ -237,7 +237,7 @@ module conv_controll_2 #(
     //assign spike_mem_rd_addr = layer_counter == 0? (row_sum + (dim_output_feature*input_feature_cnt)) :
         //{ {(13-clogb2(MAX_NUMBER_INPUT_FEATURE)){1'b0}}, input_feature_cnt, row_sum};
 
-    // RIEMPIMENTO WEIGHTS_BUFFER
+    // WEIGHTS_BUFFER FILLING
     reg [1:0] count_weights;
     
     always @(posedge clk) begin
@@ -280,7 +280,7 @@ module conv_controll_2 #(
     wire en_PE;
     assign en_PE = (new_kernel_d && !write_en_weight_buffer && input_feature_ready) || 
                     (input_feature_ready && weights_buffer_ready && !weights_buffer_ready_d) || 
-                    (input_feature_ready && !input_feature_ready_d && weights_buffer_ready) ; //impulso di un ciclo
+                    (input_feature_ready && !input_feature_ready_d && weights_buffer_ready) ; //one-cycle pulse
 
     wire [MAX_KERNEL*MAX_KERNEL-1:0] output_kernel;
 

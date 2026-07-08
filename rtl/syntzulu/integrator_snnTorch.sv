@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
-// Precisione dei bit letta da config.txt (incluso tramite `include `CONFIG_PATH).
-// I default qui sotto valgono solo come fallback (es. testbench standalone che non
-// includono config.txt).
+// Bit precision read from config.txt (included via `include `CONFIG_PATH).
+// The defaults below are used only as a fallback (e.g. standalone testbench that does not
+// include config.txt).
 
 `ifndef NBITS_M
   `define NBITS_M 16
