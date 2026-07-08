@@ -96,8 +96,7 @@ module layer_lp
     wire [31:0] weights_dense;
     wire [31:0] weights_conv;
 
-    BRAM_singlePort_readFirst 
-    //weight_memory_sram
+    BRAM_singlePort_readFirst
      #(
         .RAM_WIDTH(32),                        // Specify RAM data width
         .RAM_DEPTH(WEIGHT_DEPTH),                      // Specify RAM depth (number of entries)

@@ -6,7 +6,7 @@
 #
 #  TYPICAL FLOW:
 #      make prepare_data                  # extract the zip into the dataset folder
-#      make simulate_syntzulu_snn_lp      # compile + simulate
+#      make simulate_snn_lp               # compile + simulate
 #      make wave                          # open the waveform in GTKWave (optional)
 #
 #  The active dataset is selected by the `PATH macro in rtl/define.v.
@@ -30,12 +30,11 @@ DATA_ZIP ?= /media/sf_cartella_condivisa_OPENHW/$(DATASET).zip
 SIM_BIN  := rtl_sim_snn_lp
 VCD      := syntzulu_tb_snn_lp.vcd
 
-# Source lists (tc_sram.sv is excluded: the sim uses tc_sram_fake.sv instead)
+# Source lists
 RTL_SRCS := sim/tb/syntzulu_tb_snn_lp.sv \
-            $(wildcard rtl/syntzulu/*.sv) $(wildcard rtl/syntzulu/*.v) \
-            $(filter-out rtl/primitive/tc_sram.sv,$(wildcard rtl/primitive/*.sv))
+            $(wildcard rtl/syntzulu/*.sv) $(wildcard rtl/syntzulu/*.v)
 
-.PHONY: prepare_data simulate_syntzulu_snn_lp wave clean
+.PHONY: prepare_data simulate_snn_lp wave clean
 
 # Regenerate the data: remove the old folder and extract the zip.
 # The source zip is left in place.
@@ -44,7 +43,7 @@ prepare_data:
 	unzip $(DATA_ZIP) -d ./
 
 # Compile and run the standalone snn_lp testbench simulation.
-simulate_syntzulu_snn_lp:
+simulate_snn_lp:
 	mkdir -p work
 	$(IVERILOG) -g2012 -o $(SIM_BIN) $(RTL_SRCS)
 	$(VVP) $(SIM_BIN)
