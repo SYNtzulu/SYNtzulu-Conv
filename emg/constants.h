@@ -1,0 +1,4 @@
+#define WEIGHT_DEPTH 768
+#define CHANNELS 256
+#define TIME 0
+#define SAMPLE_ADDR 1048576
