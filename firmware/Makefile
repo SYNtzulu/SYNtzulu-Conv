@@ -1,4 +1,4 @@
-TOOLCHAIN_PREFIX=/opt/riscv/bin/riscv32-unknown-elf-
+TOOLCHAIN_PREFIX=/opt/riscv32/bin/riscv32-unknown-elf-
 
 # List of source files
 SRCS = src/main.c src/startup.c src/timer.c
