@@ -91,7 +91,7 @@ end
 
   assign pooling_enable = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.pooling_enable;
 
-  assign valid_snn = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.valid_fifo;
+  assign valid_snn = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.en_shift[3];
   assign p1        = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in;
   assign p2        = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in;
 
