@@ -65,7 +65,7 @@ module integrator_and_fifo #(
         end
 
    // INTEGRATOR
-    integrator #(
+    integrator_old #(
         .WIDTH(WIDTH)
     ) integrator_i (
         .clk(clk),

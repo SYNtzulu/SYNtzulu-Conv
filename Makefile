@@ -83,7 +83,7 @@ simulate_sy:
 
 simulate:
 	cd firmware && make -B
-	iverilog -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/primitive/* sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
+	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/primitive/* sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v rtl/memorie_ihp/* rtl/behavioural_ihp/*
 	vvp rtl_sim
 	rm rtl_sim 
 	mv tb_serv.vcd work/

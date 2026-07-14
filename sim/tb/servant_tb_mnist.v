@@ -40,7 +40,7 @@ parameter TARGET_FILE          = {"sim/target/",`PATH,"/snn_inference.txt"};
 parameter TARGET_FILE_BINNING= {"sim/target/",`PATH,"/spike_vec.txt"};
 parameter OUTPUT_FILE_BINNING = {"sim/results/",`PATH,"/spike_vec.txt"};
 
-parameter MAX_ERRORS = 1000;
+parameter MAX_ERRORS = 2;
 
 integer i,j,k;
 integer f_t_bin, f_out_bin;

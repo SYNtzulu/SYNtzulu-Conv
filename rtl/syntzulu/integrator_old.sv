@@ -29,7 +29,8 @@ module integrator_old #(parameter WIDTH = 16)
     input [WIDTH-1:0] threshold,
     input first_input_feature,
     input conv_enable,
-    
+    input pooling_spike_enable,
+
     output valid,
     output valid_fifo,
     output spike,
@@ -97,8 +98,8 @@ always @(posedge clk)
         r_threshold[3] <= r_threshold[2];
     end
 
-assign spike = (comparator_in >= r_threshold[3]) & detection; 
-assign output_new = spike? 0 : comparator_in;     
+assign spike = pooling_spike_enable ? 1'b1 : ((comparator_in >= r_threshold[3]) & detection);
+assign       output_new = spike ?     comparator_in - threshold : comparator_in;     
 assign valid_fifo = en_shift[3];
 assign valid = en_shift[3] && detection;
     

@@ -1,0 +1,62 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Thu Jul  9 17:41:50 2026
+[*]
+[dumpfile] "/home/luca/SYNtzulu-Conv/work/tb_serv.vcd"
+[dumpfile_mtime] "Thu Jul  9 15:58:58 2026"
+[dumpfile_size] 45146760
+[savefile] "/home/luca/SYNtzulu-Conv/work/debug.gtkw"
+[timestart] 672510000
+[size] 2756 1473
+[pos] -51 -51
+*-17.823828 673329750 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] servant_tb.
+[treeopen] servant_tb.servant_sim_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.encoding_slot_i.encoding_slot_emg_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.conv_controll_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.conv_controll_i.mux_buffer.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.conv_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.fifo_ram.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.spike_mem.
+[treeopen] servant_tb.servant_sim_i.soc_i.servant.u_servant_uart.
+[sst_width] 610
+[signals_width] 508
+[sst_expanded] 1
+[sst_vpaned_height] 524
+@28
+servant_tb.wb_clk
+@24
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.current_instr[79:0]
+@25
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.square_dim_output_feature[7:0]
+@420
+[color] 1
+servant_tb.errors_snn_inference
+@28
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.fix_cnt
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.rden
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.wren
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.pre_fix_cnt
+@200
+-BRAM FIFO 
+@24
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.rd_cnt[12:0]
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.wr_cnt[12:0]
+@2028
+^1 /home/luca/SYNtzulu-Conv/work/fsm_fakedualport_filter.txt
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.fifo_ram.fsm_read.state[1:0]
+@28
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.fifo_ram.mem0.A_REN
+servant_tb.servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.fifo_ram.mem0.A_WEN
+[pattern_trace] 1
+[pattern_trace] 0
