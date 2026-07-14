@@ -47,14 +47,9 @@ reg signed [WIDTH-1:0] r_stimolo[2:0];
 reg signed [WIDTH-1:0] r_threshold [3:0];
 (* use_dsp = "yes" *)
 reg signed [WIDTH-1:0] comparator_in;
-reg [4:0] en_shift;
+reg [3:0] en_shift;
 
 reg [P_SIZE-1:0] supporto_1, supporto_2;
-
-// stadio 5 (aggiunto): registri delle uscite prima combinatorie
-reg               spike_r;
-reg signed [WIDTH-1:0] output_new_r;
-reg               valid_r;
 
 wire [13:0] decay_new;
 assign decay_new = conv_enable ? (first_input_feature ? { {2{decay[13]}}, decay } : 4096) : { {2{decay[13]}}, decay };
@@ -68,9 +63,6 @@ always @(posedge clk)
         p <= 0;
         p_shift <= 0;
         comparator_in <= 0;
-        spike_r <= 0;
-        output_new_r <= 0;
-        valid_r <= 0;
          for(i=0;i<4;i=i+1)
             r_threshold[i] <= 0;
         
@@ -104,23 +96,11 @@ always @(posedge clk)
         en_shift[3] <= en_shift[2];
         comparator_in <= p_shift + r_stimolo[2];
         r_threshold[3] <= r_threshold[2];
-
-        // STAGE 5 (aggiunto): registro le uscite prima combinatorie
-        en_shift[4]  <= en_shift[3];
-        spike_r      <= spike_c;
-        output_new_r <= output_new_c;
-        valid_r      <= en_shift[3] && detection;
     end
 
-// combinatoria dello stadio 4 (ex-uscite), ora registrata nello stadio 5
-wire spike_c;
-wire signed [WIDTH-1:0] output_new_c;
-assign spike_c      = pooling_spike_enable ? 1'b1 : ((comparator_in >= r_threshold[3]) & detection);
-assign output_new_c = spike_c ? comparator_in - threshold : comparator_in;
-
-assign spike      = spike_r;
-assign output_new = output_new_r;
-assign valid_fifo = en_shift[4];
-assign valid      = valid_r;
+assign spike = pooling_spike_enable ? 1'b1 : ((comparator_in >= r_threshold[3]) & detection);
+assign       output_new = spike ?     comparator_in - threshold : comparator_in;     
+assign valid_fifo = en_shift[3];
+assign valid = en_shift[3] && detection;
     
 endmodule
