@@ -97,53 +97,7 @@ module layer_lp
 
     wire [15:0] weights_out_1;   
     wire [15:0] weights_out_2;   
-/*
-    SPRAM_singlePort_readFirst #(
-        .RAM_WIDTH(16),                  // Specify RAM data width
-        .RAM_DEPTH(WEIGHT_DEPTH),             // Specify RAM depth (number of entries)
-        .RAM_PERFORMANCE("HIGH_PERFORMANCE"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
-        .INIT_FILE(WEIGHTS_FILE_1)             // Specify name/location of RAM initialization file if using one (leave blank if not)
-    )weight_mem_1(
-        .addra(weight_mem_L1_wr_addr),      // Port A address bus, driven by axi bus
-        .addrb(weight_rd_addr),          // Port B address bus, it goes in the accumulator
-        .dina(weight_mem_L1_data_in),       // Port A RAM input data, driven by axi bus
-        //.dinb({64{1'b0}}),                        // write port PL side not used
-        .clk(clk),                       // Clock
-        .wea(weight_mem_L1_wren),           // Port A write enable
-        //.web(1'b0),                      // write port PL side not used
-        .ena(weight_mem_L1_ena),         // Port A RAM Enable, for additional power savings, disable port when not in use
-        .enb(1'b1),                      // Port B RAM Enable, for additional power savings, disable port when not in use
-        .rst(rst),                       // Port A and B output reset (does not affect memory contents)
-        //.regcea(1'b1),                   // Port A output register enable
-        .regceb(1'b1),                   // Port B output register enable
-        
-        //.douta(weights_mem_ctrl_ext_1),    // Port B RAM output data
-        .doutb(weights_out_1)              // Port B RAM output data
-    );
 
-    SPRAM_singlePort_readFirst #(
-        .RAM_WIDTH(16),                  // Specify RAM data width
-        .RAM_DEPTH(WEIGHT_DEPTH),             // Specify RAM depth (number of entries)
-        .RAM_PERFORMANCE("HIGH_PERFORMANCE"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
-        .INIT_FILE(WEIGHTS_FILE_2)             // Specify name/location of RAM initialization file if using one (leave blank if not)
-    )weight_mem_2(
-        .addra(weight_mem_L2_wr_addr),      // Port A address bus, driven by axi bus
-        .addrb(weight_rd_addr),          // Port B address bus, it goes in the accumulator
-        .dina(weight_mem_L2_data_in),       // Port A RAM input data, driven by axi bus
-        //.dinb({64{1'b0}}),                        // write port PL side not used
-        .clk(clk),                       // Clock
-        .wea(weight_mem_L2_wren),           // Port A write enable
-        //.web(1'b0),                      // write port PL side not used
-        .ena(weight_mem_L2_ena),                      // Port A RAM Enable, for additional power savings, disable port when not in use
-        .enb(1'b1),                      // Port B RAM Enable, for additional power savings, disable port when not in use
-        .rst(rst),                       // Port A and B output reset (does not affect memory contents)
-        //.regcea(1'b1),                   // Port A output register enable
-        .regceb(1'b1),                   // Port B output register enable
-        
-        //.douta(weights_mem_ctrl_ext_2),    // Port B RAM output data
-        .doutb(weights_out_2)              // Port B RAM output data
-    );
-*/
 	
 	// 4 brams one after the other
     ram_1024x16 #(
