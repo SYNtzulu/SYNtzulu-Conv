@@ -64,7 +64,7 @@ always @(posedge clk)
 always @(posedge clk)
     if(rst || clear_counter)
         wr_cnt <= 0;
-    else if(fix_cnt) begin // bw IFs the pointer is forced back
+    else if(wen_fsm) begin // bw IFs the pointer is forced back
         if(wren) // if during IF change a write request arise the address is moved by square_dim_output_feature_plus_one
             wr_cnt <= wr_cnt - square_dim_output_feature;
         else 
@@ -86,8 +86,8 @@ assign DO = reset_potential_d ? {DATA_WIDTH{1'b0}} : fifo_out;
 wire [DATA_WIDTH-1:0] fifo_out;
 
 
-//ihp_potential_mem
-BRAM_singlePort_readFirst
+ihp_potential_mem
+//BRAM_singlePort_readFirst
 #(
   .RAM_WIDTH(DATA_WIDTH),          // Specify RAM data width
   .RAM_DEPTH(DEPTH),               // Specify RAM depth (number of entries)
@@ -106,9 +106,9 @@ potential_mem
   .rst(rst),                       // Port A and B output reset (does not affect memory contents)
   .regceb(1'b1),                   // Port B output register enable
   
-  .doutb(fifo_out)              // Port B RAM output data
-  //.fix_cnt(fix_cnt),
-  //.wen_fsm(wen_fsm)
+  .doutb(fifo_out)  ,            // Port B RAM output data
+  .fix_cnt(fix_cnt),
+  .wen_fsm(wen_fsm)
     );
 
 

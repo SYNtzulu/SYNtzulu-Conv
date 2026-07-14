@@ -117,10 +117,12 @@ assign A_DOUT=  dr_r;
   endgenerate
 
 
+  // probe di TUTTO l'array per il debug in waveform:
+  // appaiono in GTKWave come ...mem_dbg[0].tmp ... mem_dbg[2**P_ADDR_WIDTH-1].tmp
   generate
 	  genvar idx;
-	  for(idx = 0; idx < 16; idx = idx+1) begin
-		wire [63:0] tmp;
+	  for(idx = 0; idx < 2**P_ADDR_WIDTH; idx = idx+1) begin: mem_dbg
+		wire [P_DATA_WIDTH-1:0] tmp;
 		assign tmp = memory[idx];
 	  end
   endgenerate

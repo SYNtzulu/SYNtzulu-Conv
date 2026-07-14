@@ -69,6 +69,7 @@ module ihp_potential_mem #(
 		.addra(addra),
 		.addrb(addrb),
 		.enb(enb),
+		.fix_cnt_d(fix_cnt_d),
 		.REN(REN_FSM),
 		.read_addr(read_addr)
 	);
@@ -107,7 +108,7 @@ module ihp_potential_mem #(
 			doutb_d <= out_buff_r;
 	end
 
-	assign doutb = (REN_DD && enb) ? buffer_r[15:0] : doutb_d;
+	assign doutb = (REN_DD ) ? buffer_r[15:0] : doutb_d;
 
 	//WRITE LOGIC  --  row buffer per-lane + flush parziale su fix_cnt
 
@@ -223,6 +224,7 @@ module fsm_read(
 	input clk, rst,
 	input [12:0] addra, addrb,
 	input enb,
+	input fix_cnt_d,
 	output reg REN,
 	output reg[10:0] read_addr
 );
@@ -256,7 +258,7 @@ module fsm_read(
 		case(state)
 			START:   begin read_addr = 0;                REN = 1;                           end
 			WAIT:    begin read_addr = 0;                REN = 0;                           end
-			WORK:    begin read_addr = addrb[12:2] + 1 ; REN = addrb[1] && addrb[0] && enb; end
+			WORK:    begin read_addr = addrb[12:2] + (1'b1 - fix_cnt_d) ; REN = addrb[1] && addrb[0] && enb; end
 			default: begin read_addr = 0;                REN = 0;                           end
 		endcase
 	end
