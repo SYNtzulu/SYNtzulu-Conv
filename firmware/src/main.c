@@ -46,11 +46,11 @@ int main(void)
     uart_send(7);
     uart_send(6);
 
-    // carico pesi
-    //spi_load_to_mem(WEIGHT_1_ADDR, 0, WEIGHT_DEPTH*8);
-    //spi_load_to_mem(WEIGHT_2_ADDR, 1, WEIGHT_DEPTH*8);
-    //spi_load_to_mem(WEIGHT_3_ADDR, 2, WEIGHT_DEPTH*8);
-    //spi_load_to_mem(WEIGHT_4_ADDR, 3, WEIGHT_DEPTH*8);
+    // carico pesi (SPI_READ_SIZE e' in BIT: 768 word * 16 = 12288 bit per banco)
+    spi_load_to_mem(WEIGHT_1_ADDR, 0, WEIGHT_DEPTH*16);
+    spi_load_to_mem(WEIGHT_2_ADDR, 1, WEIGHT_DEPTH*16);
+    spi_load_to_mem(WEIGHT_3_ADDR, 2, WEIGHT_DEPTH*16);
+    spi_load_to_mem(WEIGHT_4_ADDR, 3, WEIGHT_DEPTH*16);
 /*
     // preload 2 istruzioni 
     spi_load_to_mem(INSTR_ADDR, SPI_MEM_OUT_INSTR, INSTR_BYTES*8);

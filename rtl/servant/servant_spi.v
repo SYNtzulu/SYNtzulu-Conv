@@ -268,24 +268,37 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
             data_in_intmems <= spi_rd_data;
     end
 
-    wire wen;
-    assign wen = address_mems[0]&spi_byte_valid_d;
+    // --- Assemblaggio 2 byte SPI -> 1 parola da 16 bit per le memorie pesi ---
+    // La SPI consegna 8 bit alla volta; la ram_1024x16 vuole una parola da 16 bit
+    // con un solo write-enable. Il primo byte del pair (indice pari) e' il byte
+    // ALTO, il secondo (indice dispari) e' il byte BASSO -> hi-first, coerente col
+    // layout dei pesi in flash.txt (es. C7 15 -> 0xC715). Una sola scrittura, sul
+    // secondo byte del pair. Il path campioni (input buffer) resta invariato sotto.
+    reg [7:0] hi_byte_intmem;
+    always @(posedge i_wb_clk) begin
+        if (rst_out_spi)
+            hi_byte_intmem <= 8'h00;
+        else if (en_intmems & ~address_mems[0])   // primo byte del pair = byte alto
+            hi_byte_intmem <= spi_rd_data;
+    end
+    wire [15:0] word_intmem = {hi_byte_intmem, spi_rd_data};  // {alto, basso}
+    wire        wen_word    = en_intmems & address_mems[0];    // scrive sul secondo byte
 
     assign wr_addr_intmem1 = address_mems[14:1];
-    assign wr_data_intmem1 = data_in_intmems;
-    assign wen_intmem1 = en_intmem1 & wen;
+    assign wr_data_intmem1 = word_intmem;
+    assign wen_intmem1 = en_intmem1 & wen_word;
 
     assign wr_addr_intmem2 = address_mems[14:1];
-    assign wr_data_intmem2 = data_in_intmems;
-    assign wen_intmem2 = en_intmem2 & wen;
+    assign wr_data_intmem2 = word_intmem;
+    assign wen_intmem2 = en_intmem2 & wen_word;
 
     assign wr_addr_intmem3 = address_mems[14:1];
-    assign wr_data_intmem3 = data_in_intmems;
-    assign wen_intmem3 = en_intmem3 & wen;
+    assign wr_data_intmem3 = word_intmem;
+    assign wen_intmem3 = en_intmem3 & wen_word;
 
     assign wr_addr_intmem4 = address_mems[14:1];
-    assign wr_data_intmem4 = data_in_intmems;
-    assign wen_intmem4 = en_intmem4 & wen;
+    assign wr_data_intmem4 = word_intmem;
+    assign wen_intmem4 = en_intmem4 & wen_word;
 /*
     assign wr_addr_instr = address_mems[14:1];
     assign wr_data_instr = data_in_intmems;
