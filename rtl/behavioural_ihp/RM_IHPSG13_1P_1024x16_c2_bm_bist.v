@@ -18,7 +18,7 @@
 //
 // ------------------------------------------------------ 
 `celldefine
-module RM_IHPSG13_1P_1024x16_c2_bm_bist (
+module RM_IHPSG13_1P_1024x16_c2_bm_bist #(parameter INIT_FILE="") (
     A_CLK,
     A_MEN,
     A_WEN,
@@ -62,7 +62,9 @@ module RM_IHPSG13_1P_1024x16_c2_bm_bist (
 
     SRAM_1P_behavioral_bm_bist #(
 	.P_DATA_WIDTH(16),
-	.P_ADDR_WIDTH(10)
+	.P_ADDR_WIDTH(10),
+	.INIT_FILE(INIT_FILE),
+	.DEPTH(1024)
 	) i_SRAM_1P_behavioral_bm_bist (
                     .A_CLK(A_CLK),
                     .A_MEN(A_MEN),
@@ -111,7 +113,9 @@ module RM_IHPSG13_1P_1024x16_c2_bm_bist (
 
     SRAM_1P_behavioral_bm_bist #(
 	.P_DATA_WIDTH(16),
-	.P_ADDR_WIDTH(10)
+	.P_ADDR_WIDTH(10),
+	.INIT_FILE(INIT_FILE),
+	.DEPTH(1024)
 	) i_SRAM_1P_behavioral_bm_bist (
                     .A_CLK(A_CLK_DELAY),
                     .A_MEN(A_MEN_DELAY),

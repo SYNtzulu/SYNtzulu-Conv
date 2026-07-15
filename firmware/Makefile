@@ -10,11 +10,15 @@ HDRS = src/riscv-csr.h src/riscv-interrupts.h src/timer.h src/peripherls.h
 OBJS = $(SRCS:.c=.o)
 
 # Default target: build the executable
-all: exe.hex
+all: exe.hex exe_lo.hex exe_hi.hex
 
 exe.hex: exe.bin
 	python3 makehex.py $< > $@
 	rm exe.bin
+
+# Split the 32-bit exe.hex into two 16-bit halves for the 1024x16 IHP banks
+exe_lo.hex exe_hi.hex: exe.hex split_hex.py
+	python3 split_hex.py exe.hex exe_lo.hex exe_hi.hex
 
 exe.bin: exe.elf
 	$(TOOLCHAIN_PREFIX)objcopy -O binary $< $@
