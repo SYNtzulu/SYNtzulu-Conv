@@ -51,69 +51,30 @@ module delta_modulator_multichannel #(
           end
     
     wire signed [WIDTH-1:0] data_old; // old sample
-/*
-    BRAM_singlePort_readFirst
-    #(
-      .RAM_WIDTH(WIDTH*2),        
-      .RAM_DEPTH(CHANNELS),             
-      .RAM_PERFORMANCE("LOW_LATENCY"), 
-	  .INIT_FILE("emg/delta_concat.hex")      
-	)
-    sample_mem
-     (
-      .addra(channel_cnt),  //rr_channel_cnt
-      .addrb(channel_cnt), 
-      .dina({delta,prev_sample}),
-      .clk(clk),
-      .wea(en_dd), 
-      .ena(en_dd),                   
-      .enb(en),      
-      .rst(rst),                    
-      .regceb(1'b1),
-      
-      .doutb({delta,data_old})
-    );   
-*/
-    SB_RAM40_4K #(
-    .INIT_FILE({"sim/mem/",`PATH,"/delta_concat.hex"}))
-    delta_mem (
-        .RDATA({delta,data_old}),
-        .RCLK(clk),
-        .RCLKE(1'b1),
-        .RE(1'b1),
-        .RADDR(channel_cnt),
 
-        .WCLK(clk),
-        .WCLKE(en_dd),
-        .WE(en_dd),
-        .WADDR(channel_cnt),
-        .MASK(16'hFF00),
-        .WDATA(prev_sample)
+
+
+    // Per-channel state [ delta | prev_sample ] on a single-port 16-bit IHP SRAM.
+    // Reads and writes the SAME address (channel_cnt) every active cycle -> the
+    // macro does WRITE-THROUGH (rdata returns the just-written value). Only the
+    // low byte (prev_sample) is written (wbm=00FF); the high byte (delta, the
+    // per-channel threshold from the init file) is preserved.
+    wire [9:0] delta_addr = channel_cnt;
+    
+    ihp_ram_1024x16 #(
+        .INIT_FILE({"sim/mem/",`PATH,"/delta_concat.hex"})
+    ) delta_mem (
+        .clk   (clk),
+        .we    (en_dd),
+        .waddr (delta_addr),
+        .wdata ({8'b0, prev_sample}),
+        .wbm   (16'h00FF),
+        .re    (1'b1),
+        .raddr (delta_addr),
+        .rdata ({delta, data_old})
     );
 
-/*
-    BRAM_singlePort_readFirst
-    #(
-      .RAM_WIDTH(WIDTH),        
-      .RAM_DEPTH(CHANNELS),             
-      .RAM_PERFORMANCE("LOW_LATENCY"), 
-	  .INIT_FILE({"sim/mem/",`PATH,"/delta.hex"})      
-	)
-    delta_mem
-     (
-      .addra(), 
-      .addrb(channel_cnt), 
-      .dina(),
-      .clk(clk),
-      .wea(1'b0), 
-      .ena(1'b0),                   
-      .enb(en),      
-      .rst(rst),                    
-      .regceb(1'b1),
-      
-      .doutb(delta)
-    ); 
-*/
+
   reg signed [WIDTH-1:0] prev_sample;    // next value to store
   reg signed [WIDTH-1:0] samples_d;
   always @(posedge clk) samples_d <= samples;
