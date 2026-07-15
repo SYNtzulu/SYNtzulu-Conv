@@ -106,6 +106,8 @@ localparam MAX_SYNAPSES_DENSE = 128;
 
 localparam WEIGHT_ADDRESS_SIZE = clogb2(1024);
 
+wire [15:0] w_L1, w_L2, w_L3, w_L4; // read lanes from the shared 64-bit weight mem
+
 /* PROGRAMM COUNTER */
 
 reg [clogb2(MAX_SYNAPSES_CONV-1)-1:0] integrated_neurons_cnt;
@@ -277,13 +279,13 @@ layer_lp
 
     .WEIGHTS_FILE_1(WEIGHTS_FILE_1),
 	.WEIGHTS_FILE_2(WEIGHTS_FILE_2),
-    .WEIGHT_DEPTH(WEIGHT_DEPTH_12),
+    .WEIGHT_DEPTH(WEIGHT_DEPTH_12)/*,
     .INIT_FILE_RAM1_0(INIT_FILE_RAM1_0),
     .INIT_FILE_RAM1_1(INIT_FILE_RAM1_1),
     .INIT_FILE_RAM1_2(INIT_FILE_RAM1_2),
     .INIT_FILE_RAM2_0(INIT_FILE_RAM2_0),
     .INIT_FILE_RAM2_1(INIT_FILE_RAM2_1),
-    .INIT_FILE_RAM2_2(INIT_FILE_RAM2_2)
+    .INIT_FILE_RAM2_2(INIT_FILE_RAM2_2)*/
     )
 layer_lp_l1_i
     (
@@ -309,7 +311,6 @@ layer_lp_l1_i
     .write_en_weight_buffer(write_en_weight_buffer),
     .spike_address(spike_address),
     
-	.weight_rd_addr(weight_rd_addr_mux),
 	.acc_clear(layer_integrated), .acc_clear_and_go(acc_clear_and_go),
 	.convolution_pipe_full(convolution_pipe_full_L1),    
 	.layer_id(layer_counter),
@@ -327,14 +328,8 @@ layer_lp_l1_i
     .first_input_feature(first_input_feature_computed), 
     .last_input_feature(last_input_feature_out),
 
-   .weight_mem_L1_wren(weight_mem_L1_wren),
-   .weight_mem_L1_wr_addr(weight_mem_L1_wr_addr),
-   .weight_mem_L1_data_in(weight_mem_L1_data_in),
-   .weight_mem_L1_ena(weight_mem_L1_ena),
-   .weight_mem_L2_wren(weight_mem_L2_wren),
-   .weight_mem_L2_wr_addr(weight_mem_L2_wr_addr),
-   .weight_mem_L2_data_in(weight_mem_L2_data_in),
-   .weight_mem_L2_ena(weight_mem_L2_ena),
+   .weights_out_1(w_L1),
+   .weights_out_2(w_L2),
    .weights_buffer_ready(weights_buffer_ready_L1)
 
 	//.weight_debug(weight_debug),
@@ -365,13 +360,13 @@ layer_lp
 
     .WEIGHTS_FILE_1(WEIGHTS_FILE_3),
 	.WEIGHTS_FILE_2(WEIGHTS_FILE_4),
-    .WEIGHT_DEPTH(WEIGHT_DEPTH_12),
+    .WEIGHT_DEPTH(WEIGHT_DEPTH_12)/*,
     .INIT_FILE_RAM1_0(INIT_FILE_RAM3_0),
     .INIT_FILE_RAM1_1(INIT_FILE_RAM3_1),
     .INIT_FILE_RAM1_2(INIT_FILE_RAM3_2),
     .INIT_FILE_RAM2_0(INIT_FILE_RAM4_0),
     .INIT_FILE_RAM2_1(INIT_FILE_RAM4_1),
-    .INIT_FILE_RAM2_2(INIT_FILE_RAM4_2)
+    .INIT_FILE_RAM2_2(INIT_FILE_RAM4_2)*/
     )
 layer_lp_l2_i
     (
@@ -398,7 +393,6 @@ layer_lp_l2_i
     .write_en_weight_buffer(write_en_weight_buffer),
     .spike_address(spike_address),
     
-	.weight_rd_addr(weight_rd_addr_mux),
 	.acc_clear(layer_integrated), .acc_clear_and_go(acc_clear_and_go),
 	.convolution_pipe_full(convolution_pipe_full_L2),    
 	.layer_id(layer_counter),  
@@ -416,16 +410,30 @@ layer_lp_l2_i
     .first_input_feature(first_input_feature_computed), 
     .last_input_feature(last_input_feature_out),
     
-   .weight_mem_L1_wren(weight_mem_L3_wren),
-   .weight_mem_L1_wr_addr(weight_mem_L3_wr_addr),
-   .weight_mem_L1_data_in(weight_mem_L3_data_in),
-   .weight_mem_L1_ena(weight_mem_L3_ena),
-   .weight_mem_L2_wren(weight_mem_L4_wren),
-   .weight_mem_L2_wr_addr(weight_mem_L4_wr_addr),
-   .weight_mem_L2_data_in(weight_mem_L4_data_in),
-   .weight_mem_L2_ena(weight_mem_L4_ena),
+   .weights_out_1(w_L3),
+   .weights_out_2(w_L4),
    .weights_buffer_ready(weights_buffer_ready_L2)
     );  
+
+// ------------------------------------------------------------------
+// Shared 64-bit weight memory (IHP 1024x64): replaces the four
+// ram_1024x16 that used to live inside the two layer_lp cores.
+// Row = {L4,L3,L2,L1}, read at weight_rd_addr_mux (both cores read the
+// same address), written one 16-bit lane at a time by the SPI loader.
+// ------------------------------------------------------------------
+weight_mem_ihp_1024x64 weight_mem_i (
+    .clk       (clk),
+    .rd_addr   (weight_rd_addr_mux[9:0]), // old ram_1024x16 raddr was 10-bit too
+    .weights_L1(w_L1),
+    .weights_L2(w_L2),
+    .weights_L3(w_L3),
+    .weights_L4(w_L4),
+    .we_L1(weight_mem_L1_wren), .waddr_L1(weight_mem_L1_wr_addr[9:0]), .wdata_L1(weight_mem_L1_data_in),
+    .we_L2(weight_mem_L2_wren), .waddr_L2(weight_mem_L2_wr_addr[9:0]), .wdata_L2(weight_mem_L2_data_in),
+    .we_L3(weight_mem_L3_wren), .waddr_L3(weight_mem_L3_wr_addr[9:0]), .wdata_L3(weight_mem_L3_data_in),
+    .we_L4(weight_mem_L4_wren), .waddr_L4(weight_mem_L4_wr_addr[9:0]), .wdata_L4(weight_mem_L4_data_in)
+);
+
 
 // These signals, coming from the 2 cores, should be alwas identical
 

@@ -46,7 +46,6 @@ module layer_lp
     input layer_integrated,
     input finish_timestep,
 
-    input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_rd_addr,
     input acc_clear, acc_clear_and_go,
     output convolution_pipe_full,    
     input [clogb2(LAYERS-1)-1:0] layer_id,
@@ -67,21 +66,16 @@ module layer_lp
     input en_conv_spike,
     input en_conv,
     
-    input weight_mem_L1_wren,
-    input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L1_wr_addr,
-    input [15:0] weight_mem_L1_data_in,
-    input weight_mem_L1_ena,
-    input weight_mem_L2_wren,
-    input [clogb2(WEIGHT_DEPTH-1)-1:0] weight_mem_L2_wr_addr,
-    input [15:0] weight_mem_L2_data_in,
-    input weight_mem_L2_ena,
+    // weights now come from the shared 64-bit weight memory in snn_lp
+    input [15:0] weights_out_1,
+    input [15:0] weights_out_2,
     output [7:0] weight_debug,
     output weight_en_debug,
     output weights_buffer_ready
     );
 
     assign weight_en_debug = en;
-    assign weight_debug = weight_rd_addr[7:0]; //weights_out_1[7:0];
+    assign weight_debug = weights_out_1[7:0];
     assign valid_spike = integrated_neuron && last_input_feature;
 
     /////////////////////////////////////////////////////////////////
@@ -95,44 +89,8 @@ module layer_lp
 
     localparam WEIGHT = 8;  
 
-    wire [15:0] weights_out_1;   
-    wire [15:0] weights_out_2;   
-
-	
-	// 4 brams one after the other
-    ram_1024x16 #(
-        .INIT_FILE_RAM0(INIT_FILE_RAM1_0),
-        .INIT_FILE_RAM1(INIT_FILE_RAM1_1),
-        .INIT_FILE_RAM2(INIT_FILE_RAM1_2),
-        .INIT_FILE_RAM3()
-    )weight_mem_1 (
-    .clk(clk),
-
-    .we(weight_mem_L1_wren),
-    .waddr(weight_mem_L1_wr_addr),   // ⚠️ deve essere 10 bit!
-    .wdata(weight_mem_L1_data_in),
-
-    .re(1'b1),
-    .raddr(weight_rd_addr),          // ⚠️ deve essere 10 bit!
-    .rdata(weights_out_1)
-);
-	// 4 brams one after the other
-    ram_1024x16 #(
-        .INIT_FILE_RAM0(INIT_FILE_RAM2_0),
-        .INIT_FILE_RAM1(INIT_FILE_RAM2_1),
-        .INIT_FILE_RAM2(INIT_FILE_RAM2_2),
-        .INIT_FILE_RAM3()
-    )weight_mem_2 (
-        .clk(clk),
-
-        .we(weight_mem_L2_wren),
-        .waddr(weight_mem_L2_wr_addr),
-        .wdata(weight_mem_L2_data_in),
-
-        .re(1'b1),
-        .raddr(weight_rd_addr),
-        .rdata(weights_out_2)
-    );
+    // weights_out_1/2 are inputs now, driven by the shared 64-bit
+    // weight memory in snn_lp (weight_mem_ihp_1024x64)
 	// the 2 output of weight_mem_1 and weight_mem_2 are composed to get 4 8-bit weights
     wire [31:0] weights_dense;
     wire [31:0] weights_conv;
