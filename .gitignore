@@ -1,0 +1,7 @@
+# Simulation artifacts / waveforms
+*.vcd
+*.fst
+*.ghw
+
+# Build / sim work products
+work/*.vcd
