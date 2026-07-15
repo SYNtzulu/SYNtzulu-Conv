@@ -1,5 +1,12 @@
 # SYNtzulu-Conv: Enabling Spiking 2D Convolutions for Sensor Data Analysis on Low-Power FPGAs
 
+> [!NOTE]
+> **Branch `syntzulu_conv_ihp130` — ASIC port.**
+> This branch is a work in progress to bring SYNtzulu-Conv from FPGA to an ASIC
+> implementation targeting the **IHP 130 nm (SG13) open-source PDK**. The main
+> change is replacing the FPGA memories (BRAM/SPRAM) with the IHP single-port
+> SRAM macros; the SNN logic is shared with the FPGA design.
+
 SYNtzulu-Conv is a Convolutional Spiking Neural Network (SNN) processing core designed to be used in low-cost and low-power FPGA devices, enabling real-time and near-sensor data analysis. The system features a **dual-core neuromorphic processor**, with each core capable of processing four synapses and one neuron per clock cycle. Additionally, it includes a **tiny RISC-V subsystem** (SERV + Servant platform) that manages the input/output operations and configures runtime parameters.  evaluated the system, which was implemented on a **Lattice iCE40UP5K FPGA**, in various use cases employing SNNs with accuracy comparable to the state-of-the-art. 
 In its current version, SYNtzulu: 
 - Fetches input data via a **12 MHz SPI** interface.
