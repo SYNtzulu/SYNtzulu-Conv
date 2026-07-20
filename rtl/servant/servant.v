@@ -124,8 +124,8 @@ module servant#(
 //                                                            //
 ////////////////////////////////////////////////////////////////
 
-    wire wb_clk;        // clock “veloce”
-    wire s_clk;         // clock “lento” (LFOSC)
+    wire wb_clk;        // clock “veloce” (gated, verso CPU/RAM/periferiche)
+    wire slow_tick;     // enable “lento” (prescaler da i_clk, era LFOSC)
     wire wb_rst;        // reset sincrono a wb_clk
 
     clk_gen_wb #(
@@ -134,7 +134,7 @@ module servant#(
         .i_clk (i_clk),          
         .i_rst (i_rst),
         .o_clk (wb_clk),
-        .o_sclk(s_clk),
+        .o_slow_tick(slow_tick),
         .o_rst (wb_rst),
         .timer_irq           (timer_irq),
         .i_wb_clkgen_adr     (wb_clk_adr),
@@ -254,8 +254,8 @@ module servant#(
 		   #(.RESET_STRATEGY (reset_strategy),
 			 .WIDTH (32))
 	timer_slow
-		   (.i_clk    (wb_clk), // serv stops gating stops with the interrupt
-			.slow_clk (s_clk),
+		   (.i_clk    (i_clk),   // always-on clock: resta vivo durante lo sleep
+			.slow_tick (slow_tick),
 			.i_rst    (wb_rst),
 			.o_irq    (timer_irq),
 			.i_wb_cyc (wb_timer_cyc),

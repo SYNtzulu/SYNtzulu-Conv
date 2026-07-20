@@ -48,7 +48,7 @@ module servant_sim
 		   .memsize  (memsize)
 		  )
 	`endif
-	soc_i(	.i_clk(),
+	soc_i(	.i_clk(wb_clk),
 				.i_rst(wb_rst),
 				.led(),
 				.buttons(buttons),

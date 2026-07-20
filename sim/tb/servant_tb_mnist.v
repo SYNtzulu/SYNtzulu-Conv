@@ -14,8 +14,10 @@ module servant_tb;
    wire q;
    reg [2:0] buttons = 15;
 
-   always  #5 i_clk <= !i_clk;
-   initial #10 i_rst <= 1'b0;
+   // 24 MHz: periodo 41.667 ns (mezzo periodo 20.833 ns), come il vecchio SB_HFOSC.
+   // Prima i_clk era ignorato (osc. interno), quindi il #5 non contava; ora e' il clock reale.
+   always  #20.833 i_clk <= !i_clk;
+   initial #40 i_rst <= 1'b0;
 
    uart_decoder #(4000000) uart_decoder (q);
 
@@ -60,7 +62,8 @@ initial begin
 
   #20000
   buttons = 0;
-  #5000000;
+  #9000000;
+  
   //#2000000000;
 
   $fclose(f_out);

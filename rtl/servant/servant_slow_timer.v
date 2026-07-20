@@ -1,58 +1,68 @@
 `default_nettype none
+//////////////////////////////////////////////////////////////////////////////
+// servant_slow_timer : single-clock-domain slow timer for ASIC / IHP130.
+//
+// The old design clocked mtime/o_irq on a separate slow oscillator (s_clk) and
+// (ab)used "posedge wr_en" as an async clock. Both are gone. Now everything
+// runs on i_clk (the always-on system clock) and advances one step per
+// slow_tick enable pulse produced by clk_gen_wb's prescaler. This keeps the
+// timer alive during SERV sleep so it can still raise the wake interrupt.
+//////////////////////////////////////////////////////////////////////////////
 module servant_slow_timer
   #(parameter WIDTH = 16,
-	 parameter RESET_STRATEGY = "",
-	 parameter DIVIDER = 0)
-  (input wire 	     i_clk, slow_clk,
-	input wire 	     i_rst,
-	output reg 	     o_irq,
-	input wire [31:0] i_wb_dat,
-	input wire 	     i_wb_we,
-	input wire 	     i_wb_cyc,
-	output reg [31:0] o_wb_rdt);
+    parameter RESET_STRATEGY = "",
+    parameter DIVIDER = 0)
+  (input wire        i_clk,
+   input wire        slow_tick,   // single-cycle enable (was slow_clk edge)
+   input wire        i_rst,
+   output reg        o_irq,
+   input wire [31:0] i_wb_dat,
+   input wire        i_wb_we,
+   input wire        i_wb_cyc,
+   output reg [31:0] o_wb_rdt);
 
-	localparam HIGH = WIDTH-1-DIVIDER;
+    localparam HIGH = WIDTH-1-DIVIDER;
 
-	reg [WIDTH-1:0]   mtime;
-	reg [HIGH:0]      mtimecmp;
+    reg [WIDTH-1:0]   mtime;
+    reg [HIGH:0]      mtimecmp;
 
-	wire [HIGH:0]     mtimeslice = mtime[WIDTH-1:DIVIDER];
+    wire [HIGH:0]     mtimeslice = mtime[WIDTH-1:DIVIDER];
 
-	always @(mtimeslice) begin
-		o_wb_rdt = 32'd0;
-		o_wb_rdt[HIGH:0] = mtimeslice;
-	end
+    always @(mtimeslice) begin
+        o_wb_rdt = 32'd0;
+        o_wb_rdt[HIGH:0] = mtimeslice;
+    end
 
-	always @(posedge i_clk) begin
-		if (RESET_STRATEGY != "NONE")
-			if (i_rst) begin
-				mtimecmp <= 0;
-			end
-		if (i_wb_cyc & i_wb_we) begin
-			mtimecmp <= i_wb_dat[HIGH:0];
-		end
+    wire wr_en = i_wb_cyc & i_wb_we;
 
-	end
+    // Compare register (written by the CPU over Wishbone)
+    always @(posedge i_clk) begin
+        if (RESET_STRATEGY != "NONE" && i_rst)
+            mtimecmp <= 0;
+        else if (wr_en)
+            mtimecmp <= i_wb_dat[HIGH:0];
+    end
 
-	wire wr_en;
-	assign wr_en = i_wb_cyc & i_wb_we;
+    // mtime counter : one step per slow_tick
+    always @(posedge i_clk) begin
+        if (wr_en)
+            mtime <= 0;
+        else if (RESET_STRATEGY != "NONE" && i_rst)
+            mtime <= 0;
+        else if (slow_tick) begin
+            if (mtimeslice <= mtimecmp)
+                mtime <= mtime + 'd1;
+            else
+                mtime <= 0;
+        end
+    end
 
-	always @(posedge slow_clk, posedge wr_en) 
-			if (RESET_STRATEGY != "NONE")
-				if (wr_en) 
-					mtime <= 0;
-				else if (i_rst)
-						mtime <= 0;
-					else if(mtimeslice <= mtimecmp)
-							mtime <= mtime + 'd1;
-						 else
-							mtime <= 0;
-
-
-	always @(posedge slow_clk, posedge wr_en)
-		if(wr_en)
-			o_irq <= 0;
-		else
-			o_irq <= (mtimeslice >= mtimecmp);
+    // Interrupt : re-evaluated at the slow rate
+    always @(posedge i_clk) begin
+        if (wr_en)
+            o_irq <= 1'b0;
+        else if (slow_tick)
+            o_irq <= (mtimeslice >= mtimecmp);
+    end
 
 endmodule
