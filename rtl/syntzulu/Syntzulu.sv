@@ -305,26 +305,20 @@ always @(posedge clk_snn)
     //                                       //
     ///////////////////////////////////////////
 
-    BRAM_singlePort_readFirst #(
-    .RAM_WIDTH(BUFFER_WIDTH),            
-    .RAM_DEPTH(OUTPUT_BUFFER_DEPTH),    //ho ipotizzato 1/8 del massimo nunmero di neuroni          
-    .RAM_PERFORMANCE("LOW_LATENCY"), 
-    .INIT_FILE("")          
-    )
-        output_buffer
-    (
-    .addra(1'b0),   
-    .addrb(output_buffer_addr),  
-    .dina(voltage_1),   
-    .clk(clk_snn),      
-    .wea(valid_spike),      
-    .ena(valid_spike),      
-    .enb(output_buffer_ren),      
-    .rst(rst),      
-    .regceb(1'b1),
-    
-    .doutb(output_buffer_out)   
-        );
+    // Output buffer -> IHP SRAM 64x64 (era BRAM inferita/FF). Usati solo
+    // BUFFER_WIDTH bit; scrittura sempre @ addr 0, lettura dalla CPU a fine
+    // inferenza -> single-port sicuro, latenza di lettura 1 ciclo.
+    ihp_ram_64x64 #(
+        .DW(BUFFER_WIDTH)
+    ) output_buffer (
+        .clk   (clk_snn),
+        .we    (valid_spike),
+        .waddr (6'd0),
+        .wdata (voltage_1),
+        .re    (output_buffer_ren),
+        .raddr (output_buffer_addr[5:0]),
+        .rdata (output_buffer_out)
+    );
    
 //  The following function calculates the address width based on specified RAM depth
 function integer clogb2;
