@@ -32,6 +32,10 @@ module servant_spi(
     output wire wen_delta,
     output wire [9:0]  wr_addr_delta,
     output wire [15:0] wr_data_delta,
+    // ---------------- CPU RAM / firmware boot (SPI_SEL_MEM_OUT == 7) ----------
+    output wire        wen_ram_boot,
+    output wire [9:0]  wr_addr_ram,
+    output wire [31:0] wr_data_ram,
     /*
     // ---------------- Instruction signals ----------------
     output wire wen_instr,
@@ -244,6 +248,8 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     assign en_inputbuffer = mm_mem_address == 3'b101;
     wire en_delta;
     assign en_delta = mm_mem_address == 3'b110;
+    wire en_ram;
+    assign en_ram = mm_mem_address == 3'b111;
 
     wire en_intmems;
     assign en_intmems = (en_intmem1 | en_intmem2 | en_intmem3 | en_intmem4 | en_inputbuffer | en_delta)&spi_byte_valid_pulse;
@@ -310,6 +316,21 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     assign wr_addr_delta = address_mems[10:1];
     assign wr_data_delta = word_intmem;
     assign wen_delta     = en_delta & wen_word;
+
+    // --- CPU RAM (firmware): assembla 4 byte -> parola 32-bit, big-endian ---
+    // Il primo byte del gruppo di 4 e' il piu' significativo. Scrittura sul 4o
+    // byte (address_mems[1:0]==11), all'indirizzo di parola address_mems[11:2].
+    wire en_ram_byte = en_ram & spi_byte_valid_pulse;
+    reg [23:0] ram_acc;   // primi 3 byte del gruppo
+    always @(posedge i_wb_clk) begin
+        if (rst_out_spi)
+            ram_acc <= 24'b0;
+        else if (en_ram_byte & (address_mems[1:0] != 2'b11))
+            ram_acc <= {ram_acc[15:0], spi_rd_data};
+    end
+    assign wr_data_ram  = {ram_acc, spi_rd_data};
+    assign wr_addr_ram  = address_mems[11:2];
+    assign wen_ram_boot = en_ram_byte & (address_mems[1:0] == 2'b11);
 /*
     assign wr_addr_instr = address_mems[14:1];
     assign wr_data_instr = data_in_intmems;

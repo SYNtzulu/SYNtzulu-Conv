@@ -15,9 +15,9 @@
 // Ports are unchanged (dina/dout stay [63:0]; only [31:0] are meaningful).
 
 module ihp_ram # (
-	parameter memfile    = "",                     // kept for compatibility (unused for init)
-	parameter memfile_lo = "firmware/exe_lo.hex",  // bits [15:0]
-	parameter memfile_hi = "firmware/exe_hi.hex"   // bits [31:16]
+	parameter memfile    = "",   // kept for compatibility (unused for init)
+	parameter memfile_lo = "",   // ASIC: nessun init da file, il firmware
+	parameter memfile_hi = ""    //       arriva via SPI (porta boot_*)
 )
 (
 	input wire clk,
@@ -25,8 +25,14 @@ module ihp_ram # (
 	input wire [9:0] addr,
 	input wire [63:0] dina,
 	output wire [63:0] dout,
-	input wire enb_debug
+	input wire enb_debug,
 
+	// porta di scrittura boot: il SPI-slave carica qui il firmware (32-bit/word)
+	// prima che la CPU salti in RAM. A boot la CPU non accede alla RAM -> nessun
+	// conflitto; la porta boot ha priorita' sulla porta CPU.
+	input wire        boot_wen,
+	input wire [9:0]  boot_addr,
+	input wire [31:0] boot_data
 );
 
 	wire wea = (|we);
@@ -44,6 +50,14 @@ module ihp_ram # (
 	wire [15:0] BM_lo = {B2, B1};   // bytes 1,0 -> [15:0]
 	wire [15:0] BM_hi = {B4, B3};   // bytes 3,2 -> [31:16]
 
+	// mux porta CPU / porta boot (boot ha priorita')
+	wire        eff_wen  = boot_wen | wea;
+	wire [9:0]  eff_addr = boot_wen ? boot_addr        : addr;
+	wire [15:0] din_lo   = boot_wen ? boot_data[15:0]  : dina[15:0];
+	wire [15:0] din_hi   = boot_wen ? boot_data[31:16] : dina[31:16];
+	wire [15:0] bm_lo    = boot_wen ? 16'hFFFF         : BM_lo;
+	wire [15:0] bm_hi    = boot_wen ? 16'hFFFF         : BM_hi;
+
 	wire [15:0] dout_lo, dout_hi;
 	assign dout = {32'b0, dout_hi, dout_lo};
 
@@ -51,13 +65,13 @@ module ihp_ram # (
 	RM_IHPSG13_1P_1024x16_c2_bm_bist #(.INIT_FILE(memfile_lo)) ram_lo (
 	    .A_CLK(clk),
 	    .A_MEN(enb_debug),
-	    .A_WEN(wea),
+	    .A_WEN(eff_wen),
 	    .A_REN(enb_debug),
-	    .A_ADDR(addr),
-	    .A_DIN(dina[15:0]),
+	    .A_ADDR(eff_addr),
+	    .A_DIN(din_lo),
 	    .A_DLY(1'b0),
 	    .A_DOUT(dout_lo),
-	    .A_BM(BM_lo),
+	    .A_BM(bm_lo),
 	    .A_BIST_CLK(1'b0),
 	    .A_BIST_EN(1'b0),
 	    .A_BIST_MEN(1'b0),
@@ -72,13 +86,13 @@ module ihp_ram # (
 	RM_IHPSG13_1P_1024x16_c2_bm_bist #(.INIT_FILE(memfile_hi)) ram_hi (
 	    .A_CLK(clk),
 	    .A_MEN(enb_debug),
-	    .A_WEN(wea),
+	    .A_WEN(eff_wen),
 	    .A_REN(enb_debug),
-	    .A_ADDR(addr),
-	    .A_DIN(dina[31:16]),
+	    .A_ADDR(eff_addr),
+	    .A_DIN(din_hi),
 	    .A_DLY(1'b0),
 	    .A_DOUT(dout_hi),
-	    .A_BM(BM_hi),
+	    .A_BM(bm_hi),
 	    .A_BIST_CLK(1'b0),
 	    .A_BIST_EN(1'b0),
 	    .A_BIST_MEN(1'b0),

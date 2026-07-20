@@ -56,6 +56,14 @@ module servant#(
     wire [31:0] wb_mem_rdt;
     wire 	    wb_mem_ack;
 
+    // Boot ROM decode: fetch a ROM_BASE (0x8000_0000, bit 31) -> ROM, resto -> RAM.
+    localparam [31:0] ROM_BASE = 32'h8000_0000;
+    wire        is_rom = wb_mem_adr[31];
+    wire [31:0] ram_rdt, rom_rdt;
+    wire        ram_ack, rom_ack;
+    assign wb_mem_rdt = is_rom ? rom_rdt : ram_rdt;
+    assign wb_mem_ack = is_rom ? rom_ack : ram_ack;
+
     wire [31:0] wb_gamux_adr;
     wire [31:0]	wb_gamux_dat;
     wire        wb_gamux_we;
@@ -243,12 +251,23 @@ module servant#(
       .i_wb_clk (wb_clk),
       .i_wb_rst (wb_rst),
       .i_wb_adr (wb_mem_adr[$clog2(memsize)-1:2]),
-      .i_wb_cyc (wb_mem_cyc),
+      .i_wb_cyc (wb_mem_cyc & ~is_rom),
       .i_wb_we  (wb_mem_we) ,
       .i_wb_sel (wb_mem_sel),
       .i_wb_dat (wb_mem_dat),
-      .o_wb_rdt (wb_mem_rdt),
-      .o_wb_ack (wb_mem_ack));
+      .o_wb_rdt (ram_rdt),
+      .o_wb_ack (ram_ack),
+      .boot_wen (wen_ram_boot_spi),
+      .boot_addr(wr_addr_ram_spi),
+      .boot_data(wr_data_ram_spi));
+
+   rom_boot boot_rom
+     (.i_wb_clk (wb_clk),
+      .i_wb_rst (wb_rst),
+      .i_wb_adr (wb_mem_adr[31:2]),
+      .i_wb_cyc (wb_mem_cyc & is_rom),
+      .o_wb_rdt (rom_rdt),
+      .o_wb_ack (rom_ack));
 		
 	servant_slow_timer
 		   #(.RESET_STRATEGY (reset_strategy),
@@ -274,7 +293,7 @@ module servant#(
 	  .buttons(buttons)); 
 
    serv_rf_top
-     #(.RESET_PC (32'h0000_0000),
+     #(.RESET_PC (32'h8000_0000),   // boot dalla ROM (ROM_BASE); poi jump a RAM@0
        .RESET_STRATEGY (reset_strategy),
   `ifdef MDU
        .MDU(1),
@@ -423,6 +442,9 @@ wire [15:0] wr_data_inputbuffer_spi;
 wire wen_delta_spi;
 wire [9:0]  wr_addr_delta_spi;
 wire [15:0] wr_data_delta_spi;
+wire wen_ram_boot_spi;
+wire [9:0]  wr_addr_ram_spi;
+wire [31:0] wr_data_ram_spi;
 
 servant_spi inst_servant_spi (
     // Wishbone interface
@@ -455,7 +477,11 @@ servant_spi inst_servant_spi (
     // delta mem
     .wen_delta      (wen_delta_spi),
     .wr_addr_delta  (wr_addr_delta_spi),
-    .wr_data_delta  (wr_data_delta_spi),/*
+    .wr_data_delta  (wr_data_delta_spi),
+    // CPU RAM / firmware boot
+    .wen_ram_boot   (wen_ram_boot_spi),
+    .wr_addr_ram    (wr_addr_ram_spi),
+    .wr_data_ram    (wr_data_ram_spi),/*
     // Instruction signals
     .wen_instr (wen_instruction_spi),
     .wr_addr_instr (wr_addr_instruction_spi),

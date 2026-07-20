@@ -14,7 +14,12 @@ module servant_ram
 	input wire 		i_wb_we,
 	input wire 		i_wb_cyc,
 	output     [31:0] 	o_wb_rdt,
-	output reg 		o_wb_ack
+	output reg 		o_wb_ack,
+
+	// porta di boot (carico firmware da SPI)
+	input wire 		boot_wen,
+	input wire [9:0] 	boot_addr,
+	input wire [31:0] 	boot_data
 );
 
 	wire [3:0] we = {4{i_wb_we & i_wb_cyc}} & i_wb_sel;
@@ -29,14 +34,17 @@ module servant_ram
      else
        o_wb_ack <= i_wb_cyc & !o_wb_ack;
  
-	ihp_ram #(.memfile(memfile)) sevant_ram 
-	(	
+	ihp_ram #(.memfile(memfile)) sevant_ram
+	(
 	.clk(i_wb_clk),
 	.we(we),
 	.addr(addr),
 	.dina(i_wb_dat),
 	.dout(o_wb_rdt),
-	.enb_debug(1'b1)	
+	.enb_debug(1'b1),
+	.boot_wen(boot_wen),
+	.boot_addr(boot_addr),
+	.boot_data(boot_data)
 	);
 
 endmodule
