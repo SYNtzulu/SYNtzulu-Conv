@@ -18,19 +18,25 @@ module stack_new #(
     reg [clogb2(DEPTH-1)-1:0] stream_cnt;
     wire [DATA_WIDTH-1:0] dout_old;
 
-    SB_RAM40_4K #(
+    // RAM inferita / FF su ASIC (era SB_RAM40_4K su iCE40).
+    // Simple-dual-port: scrittura @ entries_cnt (porta A), lettura @ stream_cnt
+    // (porta B). LOW_LATENCY = 1 ciclo di lettura, come SB_RAM40_4K.
+    BRAM_singlePort_readFirst #(
+        .RAM_WIDTH(DATA_WIDTH),
+        .RAM_DEPTH(DEPTH),
+        .RAM_PERFORMANCE("LOW_LATENCY"),
+        .INIT_FILE("")
     ) bram (
-        .RDATA(dout), 
-        .RADDR(stream_cnt), 
-        .RCLK(clk), 
-        .RCLKE(1'b1),
-        .RE(1'b1), 
-        .WADDR(entries_cnt), 
-        .WCLK(clk), 
-        .WCLKE(1'b1),
-        .WDATA(din), 
-        .WE(wr_en),
-        .MASK(16'h0000)
+        .addra(entries_cnt[clogb2(DEPTH-1)-1:0]),
+        .addrb(stream_cnt),
+        .dina(din),
+        .clk(clk),
+        .wea(wr_en),
+        .ena(1'b1),
+        .enb(1'b1),
+        .rst(rst),
+        .regceb(1'b1),
+        .doutb(dout)
     );
 
     always @(posedge clk) begin

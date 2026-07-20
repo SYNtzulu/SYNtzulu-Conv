@@ -32,21 +32,25 @@ module instruction_memory #(
     initial instruction = 80'h0000000000000000;
     initial instr_parts = 80'h0000000000000000;
 
-    // BRAM 16-bit wide
-    SB_RAM40_4K #(
+    // BRAM 16-bit wide (RAM inferita / FF su ASIC; era SB_RAM40_4K su iCE40).
+    // LOW_LATENCY = 1 ciclo di lettura, identico a SB_RAM40_4K (la FSM lo assume).
+    // Sola lettura: porta di scrittura A disattivata (wea/ena = 0).
+    BRAM_singlePort_readFirst #(
+        .RAM_WIDTH(16),
+        .RAM_DEPTH(INSTR_DEPTH),
+        .RAM_PERFORMANCE("LOW_LATENCY"),
         .INIT_FILE(INSTR_FILE)
     ) bram (
-        .RDATA(bram_out_data), 
-        .RADDR(addr), 
-        .RCLK(clk), 
-        .RCLKE(1'b1),
-        .RE(state == READ || state == IDLE), 
-        .WADDR(1'b0), 
-        .WCLK(clk), 
-        .WCLKE(1'b1),
-        .WDATA(1'b0), 
-        .WE(1'b0),
-        .MASK(16'h0000)
+        .addra({ADDR_WIDTH{1'b0}}),
+        .addrb(addr),
+        .dina(16'b0),
+        .clk(clk),
+        .wea(1'b0),
+        .ena(1'b0),
+        .enb(state == READ || state == IDLE),
+        .rst(rst),
+        .regceb(1'b1),
+        .doutb(bram_out_data)
     );
 
     always @(posedge clk)
