@@ -20,7 +20,7 @@
   to select reset modes.
 */
 
-`define PowerOnReset
+`define GlobalReset   // ASIC: reset via segnale iReset (era PowerOnReset = initial)
 
   
 module SerialTransmitter #(

@@ -62,10 +62,11 @@ module servant_uart #(
 	SerialTransmitter #(.pClockFrequency(pClockFrequency), .pBaudRate(pBaudRate))
 	uart_transmitter(
 		.iClock (i_wb_clk),
+		.iReset (wb_rst),
 		.iData  (uart_byte),
 		.iSend  (uart_tx_go),
 		.oReady (uart_if_ready),
-		.oTxd   (o_txd)); 
+		.oTxd   (o_txd));
 
 
 
@@ -204,11 +205,12 @@ module servant_uart #(
         .pBaudRate(pBaudRate)
     ) uart_transmitter (
         .iClock (i_wb_clk),
+        .iReset (wb_rst),
         .iData  (uart_byte),
         .iSend  (uart_tx_go),
         .oReady (uart_if_ready),
         .oTxd   (o_txd)
-    ); 
+    );
 
     // -------------------------------------------------------------
     // Wishbone interface

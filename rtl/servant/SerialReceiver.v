@@ -18,8 +18,11 @@
 
       
       
+`define GlobalReset   // ASIC: reset via segnale iReset (definito anche qui perche'
+                      // SerialReceiver e' compilato prima di SerialTransmitter)
+
 module SerialReceiver #(
-  parameter pClockFrequency = 16000000,  
+  parameter pClockFrequency = 16000000,
     //^ System clock frequency.
 
   parameter pBaudRate = 115200   
@@ -129,6 +132,7 @@ reg [2:0] cBitCounter;
 reg [pTimerMsb:0] cTimer;
 reg cTimerIsZero;
 
+`ifdef PowerOnReset
 initial
   begin
     cState = stErrorRecovery;
@@ -138,6 +142,7 @@ initial
     cReceived = 0;
     cBreak = 0;
   end
+`endif
 
 
 
