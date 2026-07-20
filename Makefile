@@ -73,43 +73,13 @@ build_cr:
 prog:
 	sudo iceprog output/$(filename).bin
 	
-simulate_sy:
-	#cd firmware && make -B
-	iverilog -g2012 -o rtl_sim sim/test_tb/tb_decoder.sv rtl/syntzulu/decoding_slot_mnist.sv rtl/primitive/SB_RAM40_4K.sv
-	vvp rtl_sim
-	rm rtl_sim 
-	mv tb_decoder.vcd work/
-	gtkwave --save=work/serv_waves_decoder.gtkw work/tb_decoder.vcd &
-
 simulate:
 	cd firmware && make -B
-	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/primitive/* sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v rtl/memorie_ihp/* rtl/behavioural_ihp/*
+	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/*
 	vvp rtl_sim
 	rm rtl_sim 
 	mv tb_serv.vcd work/
 	gtkwave --save=work/serv_waves.gtkw work/tb_serv.vcd &
-
-psimulate: 
-	yosys -p 'read_blif -wideports output/$(filename).blif; write_verilog output/top_syn.v'
-	iverilog -g2012 -o gate_sim rtl/psim.v rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv output/top_syn.v sim/tb/cells_sim.v sim/tb/SB_PLL40_PAD.v sim/tb/SB_PLL40_2F_PAD.v sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
-	vvp gate_sim
-	rm gate_sim 
-	mv ps_tb_serv.vcd work/
-	gtkwave --save=work/ps_serv_waves.gtkw work/ps_tb_serv.vcd &
-	
-psimulate_new:
-	yosys -p 'read_json output/$(filename).json; hierarchy -top soc; write_verilog -noattr -norename output/top_syn.v'
-	iverilog -g2012 -o gate_sim \
-		rtl/psim.v rtl/define.v \
-		sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v \
-		sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v \
-		sim/tb/flash_spi_sim.sv output/top_syn.v \
-		sim/tb/cells_sim.v sim/tb/SB_HFOSC.v sim/tb/SB_LFOSC.v
-	vvp gate_sim
-	rm gate_sim
-	mv ps_tb_serv.vcd work/
-	gtkwave --save=work/ps_serv_waves.gtkw work/ps_tb_serv.vcd &
-
 
 listen:
 	sudo rm -f output/serial.txt || true
