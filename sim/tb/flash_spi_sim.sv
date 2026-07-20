@@ -104,7 +104,7 @@ module spiflash (
 	reg [1023:0] firmware_file;
 	initial begin
 		if (!$value$plusargs("firmware=%s", firmware_file))
-			firmware_file = {"sim/mem/",`PATH,"/flash.txt"};
+			firmware_file = {"sim/mem/",`PATH,"/ASIC_flash.txt"};
 		$readmemh(firmware_file, memory);
 	end
 

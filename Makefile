@@ -111,7 +111,7 @@ create_application_BRAM:
 	mkdir -p rtl/config/$(app) sim/mem/$(app) sim/target/$(app) sim/results/$(app);\
 	cp $(app)/config.txt rtl/config/$(app)/; \
 	cp $(app)/delta_concat.hex sim/mem/$(app)/; \
-	cp $(app)/flash.txt sim/mem/$(app)/; \
+	python3 scripts/build_flash_asic.py $(app); \
 	cp $(app)/spike_vec.txt sim/target/$(app)/; \
 	cp $(app)/snn_inference.txt sim/target/$(app)/; \
 	#cp $(app)/spike_1.txt sim/target/$(app)/
