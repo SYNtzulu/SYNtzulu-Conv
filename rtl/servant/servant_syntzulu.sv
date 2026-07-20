@@ -78,15 +78,11 @@ module servant_syntzulu#(
     // delta / istruzioni (l'instruction mem preloada l'istruzione 0 al reset:
     // deve avvenire con la BRAM gia' piena). Il firmware lo azzera a fine load.
     reg boot_rst;
-    initial boot_rst = 1'b1;
     always @(posedge i_wb_clk)
         if (i_wb_rst)
             boot_rst <= 1'b1;
         else if (i_cpu_cyc && (i_cpu_adr[19:16] == 4'h5) && o_cpu_ack)
             boot_rst <= i_cpu_dat[0];
-
-    initial snn_valid_rst = 0;
-    initial o_cpu_rdt = 0;
 
     reg o_cpu_ack_int, o_cpu_ack_d, o_cpu_ack_dd; 
     reg [7:0] i_cpu_adr_d;
@@ -121,7 +117,10 @@ module servant_syntzulu#(
         end
     */
     always @(posedge i_wb_clk) begin
-        if (i_cpu_cyc)
+        if (i_wb_rst) begin
+            o_cpu_rdt     <= 32'b0;
+            snn_valid_rst <= 1'b0;
+        end else if (i_cpu_cyc)
 			case (i_cpu_adr[19:16])
                 4'h0: begin							// class , valid_inference
                     o_cpu_rdt <= {15'b0,o_data_last_layer, acc_snn_valid_mp};

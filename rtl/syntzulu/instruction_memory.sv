@@ -33,9 +33,6 @@ module instruction_memory #(
     reg [1:0] state, next_state;
     reg first;
 
-    initial instruction = 80'h0000000000000000;
-    initial instr_parts = 80'h0000000000000000;
-
     // BRAM 16-bit wide (RAM inferita / FF su ASIC; era SB_RAM40_4K su iCE40).
     // LOW_LATENCY = 1 ciclo di lettura, identico a SB_RAM40_4K (la FSM lo assume).
     // Sola lettura: porta di scrittura A disattivata (wea/ena = 0).
@@ -99,6 +96,7 @@ module instruction_memory #(
             instr_counter <= 0;
             first         <= 1;
             instr_parts   <= 80'b0;
+            instruction   <= 80'b0;
         end else begin
             case (state)
                 IDLE: begin
