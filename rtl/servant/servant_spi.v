@@ -36,12 +36,10 @@ module servant_spi(
     output wire        wen_ram_boot,
     output wire [9:0]  wr_addr_ram,
     output wire [31:0] wr_data_ram,
-    /*
-    // ---------------- Instruction signals ----------------
-    output wire wen_instr,
+    // ---------------- Instruction signals (SPI_SEL_MEM_OUT == 4) -----------
+    output wire        wen_instr,
     output wire [13:0] wr_addr_instr,
     output wire [15:0] wr_data_instr,
-    */
     // ---------------- Input buffer signals ----------------
     (* keep *) output wire wen_inputbuffer,
     output wire [13:0] wr_addr_inputbuffer,
@@ -240,10 +238,8 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     assign en_intmem3 = mm_mem_address == 3'b010;
     wire en_intmem4;
     assign en_intmem4 = mm_mem_address == 3'b011;
-    /*
     wire en_instr;
     assign en_instr = mm_mem_address == 3'b100;
-    */
     (* keep *)wire en_inputbuffer;
     assign en_inputbuffer = mm_mem_address == 3'b101;
     wire en_delta;
@@ -252,7 +248,7 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     assign en_ram = mm_mem_address == 3'b111;
 
     wire en_intmems;
-    assign en_intmems = (en_intmem1 | en_intmem2 | en_intmem3 | en_intmem4 | en_inputbuffer | en_delta)&spi_byte_valid_pulse;
+    assign en_intmems = (en_intmem1 | en_intmem2 | en_intmem3 | en_intmem4 | en_inputbuffer | en_delta | en_instr)&spi_byte_valid_pulse;
     wire rst_out_spi;
     assign rst_out_spi = i_wb_rst | spi_enable;
 
@@ -331,11 +327,11 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     assign wr_data_ram  = {ram_acc, spi_rd_data};
     assign wr_addr_ram  = address_mems[11:2];
     assign wen_ram_boot = en_ram_byte & (address_mems[1:0] == 2'b11);
-/*
+    // istruzioni SNN: parola 16-bit hi-first, come i pesi
     assign wr_addr_instr = address_mems[14:1];
-    assign wr_data_instr = data_in_intmems;
-    assign wen_instr = en_instr & wen;
-*/
+    assign wr_data_instr = word_intmem;
+    assign wen_instr     = en_instr & wen_word;
+
     assign wr_addr_inputbuffer = address_mems[14:1];
     assign wr_data_inputbuffer = data_in_intmems;
     assign wen_inputbuffer = en_inputbuffer & spi_byte_valid_d;

@@ -7,6 +7,10 @@ module instruction_memory #(
     input  clk,
     input  rst,
     input  en,
+    // caricamento istruzioni da SPI a boot (era INIT_FILE)
+    input             spi_wen,
+    input      [13:0] spi_waddr,
+    input      [15:0] spi_wdata,
     (* keep *) output reg [INSTR_WIDTH-1:0] instruction
 );
 
@@ -41,12 +45,12 @@ module instruction_memory #(
         .RAM_PERFORMANCE("LOW_LATENCY"),
         .INIT_FILE(INSTR_FILE)
     ) bram (
-        .addra({ADDR_WIDTH{1'b0}}),
+        .addra(spi_waddr[ADDR_WIDTH-1:0]),
         .addrb(addr),
-        .dina(16'b0),
+        .dina(spi_wdata),
         .clk(clk),
-        .wea(1'b0),
-        .ena(1'b0),
+        .wea(spi_wen),
+        .ena(spi_wen),
         .enb(state == READ || state == IDLE),
         .rst(rst),
         .regceb(1'b1),

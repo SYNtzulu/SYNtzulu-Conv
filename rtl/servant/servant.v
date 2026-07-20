@@ -481,11 +481,11 @@ servant_spi inst_servant_spi (
     // CPU RAM / firmware boot
     .wen_ram_boot   (wen_ram_boot_spi),
     .wr_addr_ram    (wr_addr_ram_spi),
-    .wr_data_ram    (wr_data_ram_spi),/*
+    .wr_data_ram    (wr_data_ram_spi),
     // Instruction signals
     .wen_instr (wen_instruction_spi),
     .wr_addr_instr (wr_addr_instruction_spi),
-    .wr_data_instr (wr_data_instruction_spi),*/
+    .wr_data_instr (wr_data_instruction_spi),
     // Input buffer signals
     .wen_inputbuffer (wen_inputbuffer_spi),
     .wr_addr_inputbuffer (wr_addr_inputbuffer_spi),
@@ -521,12 +521,12 @@ servant_syntzulu inst_servant_syntzulu(
     .wen_delta_spi          (wen_delta_spi),
     .wr_addr_delta_spi      (wr_addr_delta_spi),
     .wr_data_delta_spi      (wr_data_delta_spi),
-/*
-    .wen_instr              (wen_instruction_spi),
-    .wr_addr_instr          (wr_addr_instruction_spi),
-    .wr_data_instr          (wr_data_instruction_spi),
-*/
-    .i_sample_mem_spi       (wr_data_inputbuffer_spi), 
+
+    .wen_instr_spi          (wen_instruction_spi),
+    .wr_addr_instr_spi      (wr_addr_instruction_spi),
+    .wr_data_instr_spi      (wr_data_instruction_spi),
+
+    .i_sample_mem_spi       (wr_data_inputbuffer_spi),
     .i_en_encoding_slot     (wen_inputbuffer_spi),
     .i_wr_addr_inputbuffer  (wr_addr_inputbuffer_spi),
     .o_data_last_layer      (o_output_buffer_out)

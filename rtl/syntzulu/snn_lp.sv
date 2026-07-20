@@ -61,6 +61,11 @@ module snn_lp
     //output new_instruction,
 
     // weight mem 1
+    // istruzioni SNN da SPI (era INIT_FILE)
+    input             spi_instr_wen,
+    input      [13:0] spi_instr_waddr,
+    input      [15:0] spi_instr_wdata,
+
     input weight_mem_L1_wren,
     input [clogb2(WEIGHT_DEPTH_12-1)-1:0] weight_mem_L1_wr_addr,
     input [16-1:0] weight_mem_L1_data_in,
@@ -137,6 +142,9 @@ instruction_memory #(
     .clk(clk),
     .rst(rst),
     .en(new_instruction),
+    .spi_wen(spi_instr_wen),
+    .spi_waddr(spi_instr_waddr),
+    .spi_wdata(spi_instr_wdata),
     .instruction(current_instr)
 );
 

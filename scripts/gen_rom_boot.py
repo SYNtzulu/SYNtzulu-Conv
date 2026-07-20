@@ -17,7 +17,7 @@ TOOL  = "/opt/riscv32/bin/riscv32-unknown-elf-"
 EXE   = "firmware/exe.hex"
 ROM_V = "rtl/memorie_ihp/rom_boot.v"
 
-FW_ADDR         = 0x00120E00   # offset firmware in flash (dopo la delta)
+FW_ADDR         = 0x00121000   # offset firmware in flash (dopo delta + slot istruzioni)
 RAM_TARGET      = 7            # SPI_SEL_MEM_OUT -> RAM CPU
 SPI_ADDR        = 0xA0000000
 SPI_SEL_MEM_OUT = 0xA0010000

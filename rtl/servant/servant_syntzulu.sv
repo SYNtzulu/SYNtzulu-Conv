@@ -20,7 +20,7 @@ module servant_syntzulu#(
     parameter MAX_THRESHOLD = 65536,
 
     parameter INSTR_WIDTH = 80,
-    parameter INSTR_FILE = "flash/src/emg/instruction.hex",
+    parameter INSTR_FILE = "",   // ASIC: istruzioni caricate via SPI, non da file
 
     parameter WEIGHTS_FILE_1 = "flash/src/emg/weights_1.hex",
     parameter WEIGHTS_FILE_2 = "flash/src/wmg/weights_2.hex",
@@ -60,10 +60,11 @@ module servant_syntzulu#(
     input wire         wen_delta_spi,
     input wire [9:0]   wr_addr_delta_spi,
     input wire [15:0]  wr_data_delta_spi,
-/*
-    input wire         wen_instr,
-    input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_instr,
-    input wire [15:0] wr_data_instr,*/
+
+    // istruzioni SNN da SPI
+    input wire         wen_instr_spi,
+    input wire [13:0]  wr_addr_instr_spi,
+    input wire [15:0]  wr_data_instr_spi,
 
     // SPI signals
     input  wire [15:0]  i_sample_mem_spi,
@@ -72,6 +73,17 @@ module servant_syntzulu#(
     output wire [12:0] o_data_last_layer
 );
     reg snn_valid_rst;
+
+    // boot_rst: tiene l'SNN in reset finche' il firmware non ha caricato pesi /
+    // delta / istruzioni (l'instruction mem preloada l'istruzione 0 al reset:
+    // deve avvenire con la BRAM gia' piena). Il firmware lo azzera a fine load.
+    reg boot_rst;
+    initial boot_rst = 1'b1;
+    always @(posedge i_wb_clk)
+        if (i_wb_rst)
+            boot_rst <= 1'b1;
+        else if (i_cpu_cyc && (i_cpu_adr[19:16] == 4'h5) && o_cpu_ack)
+            boot_rst <= i_cpu_dat[0];
 
     initial snn_valid_rst = 0;
     initial o_cpu_rdt = 0;
@@ -186,8 +198,8 @@ module servant_syntzulu#(
     mosquito
     (
         .clk_enc    (i_wb_clk),
-		.clk_snn	(i_wb_clk), 
-        .rst        (i_wb_rst),
+		.clk_snn	(i_wb_clk),
+        .rst        (i_wb_rst | boot_rst),
         .en         (i_en_encoding_slot),
         .data_in    (i_sample_mem_spi),
         .detect     (1'b1),
@@ -220,11 +232,11 @@ module servant_syntzulu#(
         .spi_delta_wen          (wen_delta_spi),
         .spi_delta_waddr        (wr_addr_delta_spi),
         .spi_delta_wdata        (wr_data_delta_spi),
-/*
-        .wen_instr              (wen_instr),
-        .wr_addr_instr          (wr_addr_instr),
-        .wr_data_instr          (wr_data_instr),
 
+        .spi_instr_wen          (wen_instr_spi),
+        .spi_instr_waddr        (wr_addr_instr_spi),
+        .spi_instr_wdata        (wr_data_instr_spi),
+/*
 		// ACCESSIBILITY
 		
         .o_spike_mem_dat(o_spike_mem_dat),

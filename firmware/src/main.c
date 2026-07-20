@@ -9,6 +9,7 @@
 #define DEV_READ(addr)          (*((volatile uint32_t *)(addr)))
 
 #define SPI_MEM_OUT_DELTA   (6u)     // servant_spi: 3'b110 -> delta mem
+#define SPI_MEM_OUT_INSTR   (4u)     // servant_spi: 3'b100 -> instruction mem
 
 static void irq_entry(void) __attribute__((naked));
 
@@ -56,6 +57,9 @@ int main(void)
 
     // carico le soglie della delta mem (era init da file, ora via SPI come i pesi)
     spi_load_to_mem(DELTA_ADDR, SPI_MEM_OUT_DELTA, DELTA_WORDS*16);
+
+    // carico le istruzioni SNN (era init da file, ora via SPI)
+    spi_load_to_mem(INSTR_ADDR, SPI_MEM_OUT_INSTR, INSTR_MEM_WORDS*16);
 /*
     // preload 2 istruzioni 
     spi_load_to_mem(INSTR_ADDR, SPI_MEM_OUT_INSTR, INSTR_BYTES*8);
@@ -63,6 +67,11 @@ int main(void)
 
     spi_load_to_mem(instr_ptr, SPI_MEM_OUT_INSTR, INSTR_BYTES*8);
     instr_ptr += INSTR_BYTES;*/
+
+    // memorie caricate -> rilascio l'SNN dal reset PRIMA del sample: l'instruction
+    // mem preloada l'istruzione 0 (BRAM ora piena) e l'encoding e' fuori reset
+    // quando arriva il trigger di scrittura del sample (wen_inputbuffer).
+    DEV_WRITE(SYNTZULU_BOOT_RST, 0);
 
     // primo sample
     spi_load_sample(SAMPLE_ADDR, CHANNELS*8);

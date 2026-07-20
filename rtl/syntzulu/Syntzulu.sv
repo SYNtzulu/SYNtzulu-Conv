@@ -79,11 +79,13 @@ module Syntzulu
     input        spi_delta_wen,
     input [9:0]  spi_delta_waddr,
     input [15:0] spi_delta_wdata,
+
+    // istruzioni SNN da SPI
+    input        spi_instr_wen,
+    input [13:0] spi_instr_waddr,
+    input [15:0] spi_instr_wdata,
 /*
-    input wire wen_instr,
-    input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_instr,
-    input wire [15:0] wr_data_instr,
-	
+
 	//spike mem 1 & 2
 	output wire [31:0] o_spike_mem_dat,
 	input wire [7:0] i_spike_mem_adr,
@@ -232,11 +234,11 @@ snn_lp_i
     .weight_mem_L4_wr_addr(weight_mem_L4_wr_addr),
     .weight_mem_L4_data_in(weight_mem_L4_data_in),
     .weight_mem_L4_ena(weight_mem_L4_ena),
-/*
-    .wen_instr(wen_instr),
-    .wr_addr_instr(wr_addr_instr),
-    .wr_data_instr(wr_data_instr),
 
+    .spi_instr_wen(spi_instr_wen),
+    .spi_instr_waddr(spi_instr_waddr),
+    .spi_instr_wdata(spi_instr_wdata),
+/*
     .o_spike_mem_dat(o_spike_mem_dat),
     .i_spike_mem_adr(i_spike_mem_adr),
     .i_spike_mem_rd_en(i_spike_mem_rd_en),

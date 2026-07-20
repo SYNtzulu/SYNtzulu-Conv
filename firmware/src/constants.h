@@ -13,3 +13,8 @@
 // Soglie delta mem: 256 word da 16 bit {delta, prev_init}, subito dopo weight_4.
 #define DELTA_ADDR  1182720     // 0x120C00  (WEIGHT_4_ADDR + 1536)
 #define DELTA_WORDS 256
+
+// Istruzioni SNN: 25 word da 16 bit, slot fisso 512 B dopo la delta.
+// (Il firmware CPU sta a 0x121000, caricato dalla boot ROM.)
+#define INSTR_ADDR      1183232 // 0x120E00  (DELTA_ADDR + 512)
+#define INSTR_MEM_WORDS 25      // LAYERS*INSTR_WIDTH/16 = 5*5

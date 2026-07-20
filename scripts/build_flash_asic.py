@@ -88,13 +88,27 @@ def main():
     for hi, lo in zip(delta, ref):
         flash += [hi.zfill(2).upper(), lo.zfill(2).upper()]
 
-    # 4) firmware CPU: exe.hex (parole 32-bit) -> 4 byte big-endian per parola.
+    # 4) istruzioni SNN: instruction.hex (word 16-bit) hi-first, slot FISSO 512 B
+    #    (@INSTR_ADDR=0x120E00) -> indirizzo firmware stabile a 0x121000.
+    INSTR_SLOT = 512
+    instr = read_hex_lines(os.path.join(APP, "instruction.hex"))
+    ib = []
+    for w in instr:
+        w = w.zfill(4).upper()
+        ib += [w[0:2], w[2:4]]
+    if len(ib) > INSTR_SLOT:
+        sys.exit(f"ERR: istruzioni {len(ib)}B > slot {INSTR_SLOT}B")
+    ib += ["00"] * (INSTR_SLOT - len(ib))
+    flash += ib
+    instr_off = SAMPLES_BYTES + N_BANKS*WEIGHT_DEPTH*2 + len(delta)*2
+
+    # 5) firmware CPU: exe.hex (parole 32-bit) -> 4 byte big-endian per parola.
     #    Caricato a boot dalla ROM via SPI nella RAM CPU (target ID 7).
     exe = read_hex_lines("firmware/exe.hex")
     for w in exe:
         w = w.zfill(8).upper()
         flash += [w[0:2], w[2:4], w[4:6], w[6:8]]   # MSB per primo
-    fw_off = SAMPLES_BYTES + N_BANKS*WEIGHT_DEPTH*2 + len(delta)*2
+    fw_off = instr_off + INSTR_SLOT
 
     # --- scrittura (16 byte per riga) ---
     def write(path):
@@ -109,7 +123,8 @@ def main():
     write(sim_out)
 
     print(f"[build_flash_asic] app={APP}  totale {len(flash)} byte")
-    print(f"  campioni={SAMPLES_BYTES}  pesi={N_BANKS*WEIGHT_DEPTH*2}  delta={len(delta)*2}"
+    print(f"  campioni={SAMPLES_BYTES}  pesi={N_BANKS*WEIGHT_DEPTH*2}  delta={len(delta)*2}")
+    print(f"  istruzioni={len(instr)*2} in slot {INSTR_SLOT} (@0x{0x100000+instr_off:06X})"
           f"  firmware={len(exe)*4} (@0x{0x100000+fw_off:06X}, {len(exe)} word)")
     print(f"  scritto: {app_out}")
     print(f"  scritto: {sim_out}")
