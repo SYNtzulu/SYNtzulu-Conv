@@ -55,6 +55,11 @@ module servant_syntzulu#(
     input wire         wen_intmem4_spi,
     input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_intmem4_spi,
     input wire [15:0] wr_data_intmem4_spi,
+
+    // delta mem load da SPI (soglie per canale)
+    input wire         wen_delta_spi,
+    input wire [9:0]   wr_addr_delta_spi,
+    input wire [15:0]  wr_data_delta_spi,
 /*
     input wire         wen_instr,
     input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_instr,
@@ -211,6 +216,10 @@ module servant_syntzulu#(
         .weight_mem_L4_wr_addr  (wr_addr_intmem4_spi),
         .weight_mem_L4_data_in  (wr_data_intmem4_spi),
         .weight_mem_L4_ena      (wen_intmem4_spi),
+
+        .spi_delta_wen          (wen_delta_spi),
+        .spi_delta_waddr        (wr_addr_delta_spi),
+        .spi_delta_wdata        (wr_data_delta_spi),
 /*
         .wen_instr              (wen_instr),
         .wr_addr_instr          (wr_addr_instr),

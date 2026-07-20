@@ -8,6 +8,8 @@
 #define DEV_WRITE(addr, val)    (*((volatile uint32_t *)(addr)) = (val))
 #define DEV_READ(addr)          (*((volatile uint32_t *)(addr)))
 
+#define SPI_MEM_OUT_DELTA   (6u)     // servant_spi: 3'b110 -> delta mem
+
 static void irq_entry(void) __attribute__((naked));
 
 static void spi_load_to_mem(uint32_t flash_addr, uint32_t which_mem, uint32_t nbytes);
@@ -51,6 +53,9 @@ int main(void)
     spi_load_to_mem(WEIGHT_2_ADDR, 1, WEIGHT_DEPTH*16);
     spi_load_to_mem(WEIGHT_3_ADDR, 2, WEIGHT_DEPTH*16);
     spi_load_to_mem(WEIGHT_4_ADDR, 3, WEIGHT_DEPTH*16);
+
+    // carico le soglie della delta mem (era init da file, ora via SPI come i pesi)
+    spi_load_to_mem(DELTA_ADDR, SPI_MEM_OUT_DELTA, DELTA_WORDS*16);
 /*
     // preload 2 istruzioni 
     spi_load_to_mem(INSTR_ADDR, SPI_MEM_OUT_INSTR, INSTR_BYTES*8);

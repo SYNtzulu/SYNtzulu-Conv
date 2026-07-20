@@ -14,6 +14,10 @@ module encoding_slot
     input en,
     input signed [15:0] data_in,
     input detect,
+    // SPI load della delta mem (soglie per canale) -> ramo EMG
+    input wire        spi_delta_wen,
+    input wire [9:0]  spi_delta_waddr,
+    input wire [15:0] spi_delta_wdata,
     
     //output reg [3:0] spike_bin,
     //output reg valid_bin,
@@ -36,34 +40,7 @@ module encoding_slot
     );
 
 wire signed [DW-1:0] data_out_buffer;
-//wire input_buffer_valid;
-/*
-`ifdef EMG
-input_buffer
-	#(
-	.CHANNELS(CHANNELS),
-	.DW(DW)
-	)
-input_buffer_i
-	(
-	.clk(clk), .rst(rst),
-	.en(en),
-	.data_in(data_in),
-	
-	.valid(input_buffer_valid),
-	.data_out(data_out_buffer),
 
-	.external_access_en(1'b0),
-	.external_addr(i_sample_mem_adr),	
-	.external_data_out(o_sample_mem_dat),
-	.external_access_wren(1'b0),
-	.external_data_in(i_sample_mem_dat)
-	);
-
-wire [3:0] spike_bin_int;
-wire valid_bin_int;
-wire active_group_out_bin_int;
-`endif */
 
 `ifdef MNIST
 	// CHANNELS = 32
@@ -142,10 +119,14 @@ wire active_group_out_bin_int;
 		.en(en),
 		.data_in(data_in),
 
+		.spi_delta_wen(spi_delta_wen),
+		.spi_delta_waddr(spi_delta_waddr),
+		.spi_delta_wdata(spi_delta_wdata),
+
 		.pos_spike(s1_encoding),
 		.neg_spike(s2_encoding),
 		.dm_valid(valid_encoding)
-		);  
+		);
 
 `endif
 

@@ -28,6 +28,10 @@ module servant_spi(
     output wire wen_intmem4,
     output wire [13:0] wr_addr_intmem4,
     output wire [15:0] wr_data_intmem4,
+    // ---------------- Delta mem signals (SPI_SEL_MEM_OUT == 6) ----------------
+    output wire wen_delta,
+    output wire [9:0]  wr_addr_delta,
+    output wire [15:0] wr_data_delta,
     /*
     // ---------------- Instruction signals ----------------
     output wire wen_instr,
@@ -238,9 +242,11 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     */
     (* keep *)wire en_inputbuffer;
     assign en_inputbuffer = mm_mem_address == 3'b101;
-    
+    wire en_delta;
+    assign en_delta = mm_mem_address == 3'b110;
+
     wire en_intmems;
-    assign en_intmems = (en_intmem1 | en_intmem2 | en_intmem3 | en_intmem4 | en_inputbuffer)&spi_byte_valid_pulse;
+    assign en_intmems = (en_intmem1 | en_intmem2 | en_intmem3 | en_intmem4 | en_inputbuffer | en_delta)&spi_byte_valid_pulse;
     wire rst_out_spi;
     assign rst_out_spi = i_wb_rst | spi_enable;
 
@@ -299,6 +305,11 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     assign wr_addr_intmem4 = address_mems[14:1];
     assign wr_data_intmem4 = word_intmem;
     assign wen_intmem4 = en_intmem4 & wen_word;
+
+    // delta mem: parola 16-bit hi-first {delta, prev_init}, come i pesi
+    assign wr_addr_delta = address_mems[10:1];
+    assign wr_data_delta = word_intmem;
+    assign wen_delta     = en_delta & wen_word;
 /*
     assign wr_addr_instr = address_mems[14:1];
     assign wr_data_instr = data_in_intmems;

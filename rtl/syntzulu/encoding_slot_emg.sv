@@ -28,7 +28,10 @@ module encoding_slot_emg
     input clk, rst,
     input en,
     input signed [DW-1:0] data_in,
-    
+    // SPI load della delta mem (soglie per canale)
+    input             spi_delta_wen,
+    input      [9:0]  spi_delta_waddr,
+    input      [15:0] spi_delta_wdata,
     //output [3:0] spike_bin,
     output pos_spike,
     output neg_spike,
@@ -52,16 +55,23 @@ module encoding_slot_emg
 
 //wire [1:0] dm_spike;
 
-delta_modulator_multichannel #(.CHANNELS(CHANNELS),.WIDTH(DW)) 
-	delta_modulator_1 (.clk(clk),.rst(rst),.en(en),.samples(data_in),.pos_spike(pos_spike),.neg_spike(neg_spike),.valid(dm_valid));
+delta_modulator_multichannel #(
+	.CHANNELS(CHANNELS),
+	.WIDTH(DW)
+	) 
+	delta_modulator_1 (
+	.clk       (clk)      ,
+	.rst       (rst)      ,
+	.en        (en)       ,
+	.samples   (data_in)  ,
+	.spi_wen   (spi_delta_wen)  ,
+	.spi_waddr (spi_delta_waddr),
+	.spi_wdata (spi_delta_wdata),
+	.pos_spike (pos_spike),
+	.neg_spike (neg_spike),
+	.valid     (dm_valid )
+	);
 
-// 2-to-4 bits
-//wire ag1,ag2;
-//wire [1:0] s2p_out_1, s2p_out_2;
-//s2p #(.P(2)) s2p_1 ( .clk(clk), .rst(rst), .en(dm_valid), .spike_s(pos_spike),.spike_p(s2p_out_1),.valid(valid_bin), .active_group(ag1));
-//s2p #(.P(2)) s2p_2 ( .clk(clk), .rst(rst), .en(dm_valid), .spike_s(neg_spike),.spike_p(s2p_out_2),.valid(), .active_group(ag2));
-//assign active_group_out_bin = ag1 | ag2;
-//assign spike_bin = {s2p_out_1[1],s2p_out_2[1],s2p_out_1[0],s2p_out_2[0]};
 
 //  The following function calculates the address width based on specified RAM depth
 function integer clogb2;

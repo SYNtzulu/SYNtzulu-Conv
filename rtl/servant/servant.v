@@ -420,6 +420,9 @@ wire [15:0] wr_data_instruction_spi;
 wire wen_inputbuffer_spi;
 wire [13:0] wr_addr_inputbuffer_spi;
 wire [15:0] wr_data_inputbuffer_spi;
+wire wen_delta_spi;
+wire [9:0]  wr_addr_delta_spi;
+wire [15:0] wr_data_delta_spi;
 
 servant_spi inst_servant_spi (
     // Wishbone interface
@@ -448,7 +451,11 @@ servant_spi inst_servant_spi (
     .wr_data_intmem3(wr_data_intmem3_spi),
     .wen_intmem4   (wen_intmem4_spi),
     .wr_addr_intmem4(wr_addr_intmem4_spi),
-    .wr_data_intmem4(wr_data_intmem4_spi),/*
+    .wr_data_intmem4(wr_data_intmem4_spi),
+    // delta mem
+    .wen_delta      (wen_delta_spi),
+    .wr_addr_delta  (wr_addr_delta_spi),
+    .wr_data_delta  (wr_data_delta_spi),/*
     // Instruction signals
     .wen_instr (wen_instruction_spi),
     .wr_addr_instr (wr_addr_instruction_spi),
@@ -484,6 +491,10 @@ servant_syntzulu inst_servant_syntzulu(
     .wen_intmem4_spi        (wen_intmem4_spi),
     .wr_addr_intmem4_spi    (wr_addr_intmem4_spi),
     .wr_data_intmem4_spi    (wr_data_intmem4_spi),
+
+    .wen_delta_spi          (wen_delta_spi),
+    .wr_addr_delta_spi      (wr_addr_delta_spi),
+    .wr_data_delta_spi      (wr_data_delta_spi),
 /*
     .wen_instr              (wen_instruction_spi),
     .wr_addr_instr          (wr_addr_instruction_spi),

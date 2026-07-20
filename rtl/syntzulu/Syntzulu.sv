@@ -74,6 +74,11 @@ module Syntzulu
     input [16-1:0] weight_mem_L4_data_in,
     output [16-1:0] weight_mem_L4_data_out,
     input weight_mem_L4_ena,
+
+    // delta mem load da SPI (soglie per canale)
+    input        spi_delta_wen,
+    input [9:0]  spi_delta_waddr,
+    input [15:0] spi_delta_wdata,
 /*
     input wire wen_instr,
     input wire [clogb2(WEIGHT_DEPTH_12-1)-1:0] wr_addr_instr,
@@ -125,11 +130,15 @@ encoding_slot #(
 )
 encoding_slot_i
 (   
-    .clk(clk_enc), 
+    .clk(clk_enc),
     .rst(rst),
     .en(en),
     .data_in(data_in),
     .detect(detect),
+
+    .spi_delta_wen(spi_delta_wen),
+    .spi_delta_waddr(spi_delta_waddr),
+    .spi_delta_wdata(spi_delta_wdata),
 
     .s1_encoding(s1_encoding),
     .s2_encoding(s2_encoding),

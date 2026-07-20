@@ -29,6 +29,11 @@ module delta_modulator_multichannel #(
   input wire rst,           // Reset input
   input wire en,
   input wire signed [WIDTH-1:0] samples, // Analog input samples (8-bit resolution)
+  // Caricamento delta mem da SPI a boot (soglie per canale). Su ASIC sostituisce
+  // l'init da file: la CPU scrive qui via il SPI-slave, come per i pesi.
+  input wire        spi_wen,
+  input wire [9:0]  spi_waddr,
+  input wire [15:0] spi_wdata,
   output reg pos_spike, neg_spike,     // Delta modulation output
   output reg valid
 );
@@ -61,14 +66,17 @@ module delta_modulator_multichannel #(
     // per-channel threshold from the init file) is preserved.
     wire [9:0] delta_addr = channel_cnt;
     
+    // In LOAD (spi_wen, a boot con en=0) la CPU scrive la parola completa
+    // {delta, prev_init} via SPI (wbm=FFFF). A regime: solo il byte basso
+    // (prev_sample) con wbm=00FF, il byte alto (soglia delta) e' preservato.
     ihp_ram_1024x16 #(
-        .INIT_FILE({"sim/mem/",`PATH,"/delta_concat.hex"})
+        .INIT_FILE("")           // ASIC: caricata via SPI, non da file
     ) delta_mem (
         .clk   (clk),
-        .we    (en_dd),
-        .waddr (delta_addr),
-        .wdata ({8'b0, prev_sample}),
-        .wbm   (16'h00FF),
+        .we    (spi_wen | en_dd),
+        .waddr (spi_wen ? spi_waddr : delta_addr),
+        .wdata (spi_wen ? spi_wdata : {8'b0, prev_sample}),
+        .wbm   (spi_wen ? 16'hFFFF : 16'h00FF),
         .re    (1'b1),
         .raddr (delta_addr),
         .rdata ({delta, data_old})
