@@ -262,6 +262,15 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
         end
     end 
 
+    // Path campioni (input buffer / encoding slot): assembla 2 byte SPI in una
+    // parola da 16 bit hi-first, come word_intmem fa per pesi/delta/istruzioni.
+    // Sul byte pari la parola vale {8'h00, byte}, sul dispari {byte_alto, byte_basso}.
+    // NB: fino a e134005 questo registro aveva DUE always driver, il secondo dei
+    // quali caricava il solo byte corrente (data_in_intmems <= spi_rd_data).
+    // I due differivano solo nel byte alto, e per la configurazione emg il byte
+    // alto e' scartato (encoding_slot_emg.data_in e' a 8 bit), quindi erano
+    // indistinguibili in simulazione. Tenuta la versione a 16 bit: e' coerente
+    // con la larghezza della porta e non limita i campioni a 8 bit.
     always @(posedge i_wb_clk or posedge rst_out_spi) begin
         if (rst_out_spi)
             data_in_intmems <= 16'h0000;
@@ -269,15 +278,6 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
             data_in_intmems <= 16'h0000;
         else if (en_intmems)
             data_in_intmems <= {data_in_intmems[7:0], spi_rd_data};
-    end
-
-    always @(posedge i_wb_clk or posedge rst_out_spi) begin
-        if (rst_out_spi)
-            data_in_intmems <= 16'h0000;
-        else if (address_mems[0]&spi_byte_valid_d)
-            data_in_intmems <= 16'h0000;
-        else if (en_intmems)
-            data_in_intmems <= spi_rd_data;
     end
 
     // --- Assemblaggio 2 byte SPI -> 1 parola da 16 bit per le memorie pesi ---
