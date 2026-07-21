@@ -1,7 +1,10 @@
 module spike_mem_2#(
     parameter SPIKE_MEM_WIDTH = 16,
     parameter MAX_SYNAPSES = 512,
-    parameter MAX_NUMBER_OUTPUT_FEATURE = 32
+    parameter MAX_NUMBER_OUTPUT_FEATURE = 32,
+	// number of banks the 512x16 spike memory is split into (power of two).
+	// 1 = single flat array, i.e. the old BRAM_singlePort_readFirst.
+    parameter SPIKE_MEM_BANKS = 4
 )(
     input clk,
     input rst,
@@ -333,12 +336,16 @@ module spike_mem_2#(
         end
     end
 
-    BRAM_singlePort_readFirst
+	// 512x16 split into SPIKE_MEM_BANKS banks of 512/SPIKE_MEM_BANKS x 16.
+	// The bank is picked by the HIGH address bits, whose MSB is the layer
+	// ping-pong bit: write and read therefore always land in different banks.
+    BRAM_banked_singlePort_readFirst
     #(
-    .RAM_WIDTH(SPIKE_MEM_WIDTH),          
-    .RAM_DEPTH(512),               
-    .RAM_PERFORMANCE("LOW_LATENCY"), 
-    .INIT_FILE("")                   
+    .RAM_WIDTH(SPIKE_MEM_WIDTH),
+    .RAM_DEPTH(512),
+    .RAM_PERFORMANCE("LOW_LATENCY"),
+    .INIT_FILE(""),
+    .N_BANK(SPIKE_MEM_BANKS)
     )
     spike_mem
     (
