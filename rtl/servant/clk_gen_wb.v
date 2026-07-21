@@ -96,12 +96,16 @@ module clk_gen_wb #(
             o_wb_clkgen_ack <= i_wb_clkgen_cyc;
 
     // ---------------------------------------------------------------------
-    // GATED SYSTEM CLOCK  (glitch-free clock gate)
+    // GATED SYSTEM CLOCK
+    //   Cella di clock gating condivisa (std_cells/cells_clkgate.v): con
+    //   `define OPENROAD_CLKGATE mappa sulla cella reale sg13g2_lgcp_1,
+    //   altrimenti e' un pass-through (GCK = CK) -> in sim il clock NON viene
+    //   gated e il core non dorme mai (funzionalmente equivalente).
     // ---------------------------------------------------------------------
-    clock_gate u_icg (
-        .clk    (i_clk),
-        .enable (clk_en),
-        .gclk   (o_clk)
+    OPENROAD_CLKGATE u_icg (
+        .CK  (i_clk),
+        .E   (clk_en),
+        .GCK (o_clk)
     );
 
     // ---------------------------------------------------------------------
@@ -125,29 +129,4 @@ module clk_gen_wb #(
         end
     assign o_slow_tick = slow_tick_r;
 
-endmodule
-
-//////////////////////////////////////////////////////////////////////////////
-// clock_gate : glitch-free integrated clock gate.
-//
-// Default is a behavioural latch-based gate (negative-level latch samples the
-// enable while clk is low, then ANDs it with clk) so RTL simulation and
-// synthesis both get a clean, glitch-free gated clock. For the real IHP130
-// flow define SG13G2_ICG to swap in the library clock-gate cell instead
-// (confirm the exact cell / pin names against the sg13g2 stdcell lib).
-//////////////////////////////////////////////////////////////////////////////
-module clock_gate (
-    input  clk,
-    input  enable,
-    output gclk
-);
-`ifdef SG13G2_ICG
-    sg13g2_slgcp_1 u_icg (.CLK(clk), .GATE(enable), .GCLK(gclk));
-`else
-    reg en_latch;
-    always @(*)
-        if (!clk)
-            en_latch = enable;   // transparent while clk low
-    assign gclk = clk & en_latch;
-`endif
 endmodule

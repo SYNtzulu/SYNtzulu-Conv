@@ -77,7 +77,7 @@ simulate:
 	cd firmware && make -B
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
-	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/*
+	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/* std_cells/*
 	vvp rtl_sim
 	rm rtl_sim 
 	mv tb_serv.vcd work/
