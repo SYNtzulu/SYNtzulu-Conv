@@ -762,16 +762,16 @@ end
 assign last_output_feature = pooling_enable | (output_feature_integrated_cnt >= number_output_feature - 1 - en_L2_out);
 
 // it notifies, for 1 c.c., when the conv layer is integrated
+// NB: e' COMBINATORIA per intenzione (niente ritardo di clock): registrarla
+// sfasa il controllo dei layer conv e rompe l'inferenza (verificato in sim).
+// Prima era scritta come always @(*) con "<=" e if(rst): stesso comportamento
+// ma intento ambiguo. Qui e' esplicitamente combinatoria con blocking.
 reg layer_integrated_conv;
 always @(*)
     if (rst)
-        layer_integrated_conv <= 0;
-    else begin
-        if(output_feature_integrated && last_output_feature)
-           layer_integrated_conv <= 1;
-        else
-            layer_integrated_conv <= 0;
-    end
+        layer_integrated_conv = 1'b0;
+    else
+        layer_integrated_conv = output_feature_integrated && last_output_feature;
 
 // it notifies, for 1 c.c., when the dense layer is integrated
 reg layer_integrated_dense;
