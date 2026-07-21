@@ -148,8 +148,11 @@ module servant_syntzulu#(
 
     wire acc_snn_valid;
     reg acc_snn_valid_mp;
-    always @(posedge i_wb_clk)
-        if(i_wb_rst | snn_valid_rst) begin
+    always @(posedge i_wb_clk or posedge i_wb_rst)
+        if(i_wb_rst) begin
+            acc_snn_valid_mp <= 1'b0;
+        end
+        else if(snn_valid_rst) begin
             acc_snn_valid_mp <= 1'b0;
         end
         else begin

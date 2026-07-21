@@ -68,16 +68,23 @@ module serv_ctrl
 
    initial if (RESET_STRATEGY == "NONE") o_ibus_adr = RESET_PC;
 
-   always @(posedge clk) begin
-      pc_plus_4_cy_r <= i_pc_en & pc_plus_4_cy;
-      pc_plus_offset_cy_r <= i_pc_en & pc_plus_offset_cy;
+   //Asynchronous reset (assert async / release sync), required for the ASIC:
+   //the flops must reach a known state even before the clock is running.
+   //With RESET_STRATEGY == "NONE" rst_a is a constant 0, so the async branch is
+   //never taken and synthesis folds the block back into plain flops.
+   wire rst_a = i_rst & (RESET_STRATEGY != "NONE");
 
-      if (RESET_STRATEGY == "NONE") begin
+   always @(posedge clk or posedge rst_a) begin
+      if (rst_a) begin
+	 pc_plus_4_cy_r      <= 1'b0;
+	 pc_plus_offset_cy_r <= 1'b0;
+	 o_ibus_adr          <= RESET_PC;
+      end else begin
+	 pc_plus_4_cy_r <= i_pc_en & pc_plus_4_cy;
+	 pc_plus_offset_cy_r <= i_pc_en & pc_plus_offset_cy;
+
 	 if (i_pc_en)
 	   o_ibus_adr <= {new_pc, o_ibus_adr[31:1]};
-      end else begin
-	 if (i_pc_en | i_rst)
-	   o_ibus_adr <= i_rst ? RESET_PC : {new_pc, o_ibus_adr[31:1]};
       end
    end
 endmodule

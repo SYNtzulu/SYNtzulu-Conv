@@ -35,19 +35,24 @@ module servant_slow_timer
 
     wire wr_en = i_wb_cyc & i_wb_we;
 
+    // Asynchronous reset (assert async / release sync) for the ASIC.
+    // With RESET_STRATEGY == "NONE" rst_a is a constant 0 and the blocks fold
+    // back into plain flops.
+    wire rst_a = i_rst & (RESET_STRATEGY != "NONE");
+
     // Compare register (written by the CPU over Wishbone)
-    always @(posedge i_clk) begin
-        if (RESET_STRATEGY != "NONE" && i_rst)
+    always @(posedge i_clk or posedge rst_a) begin
+        if (rst_a)
             mtimecmp <= 0;
         else if (wr_en)
             mtimecmp <= i_wb_dat[HIGH:0];
     end
 
     // mtime counter : one step per slow_tick
-    always @(posedge i_clk) begin
-        if (wr_en)
+    always @(posedge i_clk or posedge rst_a) begin
+        if (rst_a)
             mtime <= 0;
-        else if (RESET_STRATEGY != "NONE" && i_rst)
+        else if (wr_en)
             mtime <= 0;
         else if (slow_tick) begin
             if (mtimeslice <= mtimecmp)

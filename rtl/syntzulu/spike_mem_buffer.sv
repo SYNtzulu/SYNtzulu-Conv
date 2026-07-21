@@ -113,8 +113,12 @@ module spike_mem_buffer (
     wire conv_one_valid  = conv_enable  && valid_one_s;
     wire finish_synapses = conv_enable && spike_addr == SYNAPSES;
 
-    always @(posedge clk) begin
-        if (rst || spike_written) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            spike_counter <= 'd0;
+            valid         <= 1'b0;
+
+        end else if (spike_written) begin
             spike_counter <= 'd0;
             valid         <= 1'b0;
 

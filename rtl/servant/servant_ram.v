@@ -28,8 +28,13 @@ module servant_ram
 
 	wire [aw-3:0] addr = i_wb_adr[aw-1:2];
 
-   always @(posedge i_wb_clk)
-     if (i_wb_rst & (RESET_STRATEGY != "NONE"))
+   // Asynchronous reset (assert async / release sync) for the ASIC.
+   // With RESET_STRATEGY == "NONE" rst_a is a constant 0 and the block folds
+   // back into a plain flop.
+   wire rst_a = i_wb_rst & (RESET_STRATEGY != "NONE");
+
+   always @(posedge i_wb_clk or posedge rst_a)
+     if (rst_a)
        o_wb_ack <= 1'b0;
      else
        o_wb_ack <= i_wb_cyc & !o_wb_ack;

@@ -98,18 +98,22 @@ module conv_controll_2 #(
     reg [clogb2(MAX_NUMBER_OUTPUT_FEATURE)-1:0] row_output_feature_cnt; // OF row counter
     reg [clogb2(MAX_NUMBER_INPUT_FEATURE)-1:0] input_feature_cnt; 		// IF counter
 	reg [clogb2(MAX_NUMBER_OUTPUT_FEATURE)-2:0] output_feature_cnt;		// OF counter
-    always @(posedge clk) begin
-        if (rst || input_feature_finish) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
             input_feature_row_cnt <= 0;
-        end else begin 
+        end else if (input_feature_finish) begin
+            input_feature_row_cnt <= 0;
+        end else begin
             if (row_finish) begin
                 input_feature_row_cnt <= input_feature_row_cnt + stride;
             end
         end
     end
 
-    always @(posedge clk)
-		if (rst || conv_finish)
+    always @(posedge clk or posedge rst)
+		if (rst)
+			row_output_feature_cnt <= 0;
+		else if (conv_finish)
 			row_output_feature_cnt <= 0;
 		else begin
 			if (row_finish) begin
@@ -121,8 +125,10 @@ module conv_controll_2 #(
 			end
 		end
 
-    always @(posedge clk)
-		if (rst || conv_finish)
+    always @(posedge clk or posedge rst)
+		if (rst)
+			input_feature_cnt <= 0;
+		else if (conv_finish)
 			input_feature_cnt <= 0;
 		else begin
 			if (input_feature_finish) begin
@@ -134,8 +140,10 @@ module conv_controll_2 #(
 			end
 		end
     
-    always @(posedge clk)
-		if (rst || conv_finish)
+    always @(posedge clk or posedge rst)
+		if (rst)
+			output_feature_cnt <= 0;
+		else if (conv_finish)
 			output_feature_cnt <= 0;
 		else begin
 			if (output_feature_finish) begin
@@ -164,8 +172,10 @@ module conv_controll_2 #(
 	// row finish is used to load the first 3 row into the "input buffer", e.g. row0, row1, row2, 
 	// and to load rows whenever the stride is bigger than 1. Otherwise row_finish is used
     reg [1:0] row_counter;
-    always @(posedge clk)
-        if(rst || input_feature_finish)
+    always @(posedge clk or posedge rst)
+        if(rst)
+            row_counter <= 0;
+        else if(input_feature_finish)
             row_counter <= 0;
         else if(convolution_enable)
             if(row_counter != dim_kernel)
@@ -224,8 +234,10 @@ module conv_controll_2 #(
 
     reg [MAX_INPUT_FEATURE-1:0] row0, row1, row2;
 
-    always @(posedge clk) begin
-        if (rst || convolution_finish)
+    always @(posedge clk or posedge rst) begin
+        if (rst)
+            {row0, row1, row2} <= 0;
+        else if (convolution_finish)
             {row0, row1, row2} <= 0;
         else if (en_dd) begin
             if (row_counter_dd != dim_kernel || row_finish) 
@@ -243,8 +255,10 @@ module conv_controll_2 #(
     // RIEMPIMENTO WEIGHTS_BUFFER
     reg [1:0] count_weights;
 
-    always @(posedge clk) begin
-        if (rst || conv_finish) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            weight_rd_addr <= 1'b0;
+        end else if (conv_finish) begin
             weight_rd_addr <= 1'b0;
         end else begin
             // if convolution_enable is zero, weight_rd_addr does not change (last row)
@@ -256,8 +270,10 @@ module conv_controll_2 #(
 							: weight_rd_addr;
         end
     end
-    always @(posedge clk) begin
-        if (rst || conv_finish) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            count_weights <= 2'd0;
+        end else if (conv_finish) begin
             count_weights <= 2'd0;
         end else begin
             // during IF initialisation, count weights is incremented by 1,2,3
@@ -272,8 +288,10 @@ module conv_controll_2 #(
 	// weight buffer write en
 	// if IF is finished starts loading the new kernel,
 	// and keep doing that while count_weights < 2
-    always @(posedge clk) begin
-        if (rst || conv_finish) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            write_en_weight_buffer <= 1'b0;
+        end else if (conv_finish) begin
             write_en_weight_buffer <= 1'b0;
         end else if (en && !convolution_finish) begin
             if (!en_d || input_feature_finish) begin

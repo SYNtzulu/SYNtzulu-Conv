@@ -39,8 +39,10 @@ module stack_new #(
         .doutb(dout)
     );
 
-    always @(posedge clk) begin
-        if (rst || clear)
+    always @(posedge clk or posedge rst) begin
+        if (rst)
+            entries_cnt <= 0;
+        else if (clear)
             entries_cnt <= 0;
         else if (wr_en)
             entries_cnt <= entries_cnt + 1'b1;

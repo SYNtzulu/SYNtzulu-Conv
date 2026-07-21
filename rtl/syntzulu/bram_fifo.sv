@@ -48,10 +48,12 @@ always @(posedge clk or posedge rst)
         square_dim_output_feature_plus_one <= square_dim_output_feature + 1;
 
 // potential mem read pointer
-always @(posedge clk)
-    if(rst || clear_counter)
+always @(posedge clk or posedge rst)
+    if(rst)
         rd_cnt <= 0;
-    else if(fix_cnt) // bw IFs the pointer is forced back   
+    else if(clear_counter)
+        rd_cnt <= 0;
+    else if(fix_cnt) // bw IFs the pointer is forced back
         rd_cnt <= rd_cnt - square_dim_output_feature_plus_one;
 	// otherwise increment rd pointer by +1
 	else if(rden)
@@ -61,8 +63,10 @@ always @(posedge clk)
             rd_cnt <= 0;
 
 // potential mem write pointer
-always @(posedge clk)
-    if(rst || clear_counter)
+always @(posedge clk or posedge rst)
+    if(rst)
+        wr_cnt <= 0;
+    else if(clear_counter)
         wr_cnt <= 0;
     else if(fix_cnt) begin // bw IFs the pointer is forced back
         if(wren) // if during IF change a write request arise the address is moved by square_dim_output_feature_plus_one

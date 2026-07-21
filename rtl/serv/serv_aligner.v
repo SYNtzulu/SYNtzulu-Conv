@@ -57,7 +57,7 @@ module serv_aligner
     */
     assign ack_en   = !(i_ibus_adr[1] & !ctrl_misal); 
 
-    always @(posedge clk ) begin
+    always @(posedge clk or posedge rst) begin
         if(rst)
             ctrl_misal <= 0;
         else if(i_wb_ibus_ack & i_ibus_adr[1])

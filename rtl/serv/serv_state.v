@@ -121,7 +121,24 @@ module serv_state
 
    assign o_init = i_two_stage_op & !i_new_irq & !init_done;
 
-   always @(posedge i_clk) begin
+   //Asynchronous reset (assert async / release sync), required for the ASIC:
+   //the flops must reach a known state even before the clock is running.
+   //With RESET_STRATEGY == "NONE" rst_a is a constant 0, so the async branch is
+   //never taken and synthesis folds the block back into plain flops.
+   wire rst_a = i_rst & (RESET_STRATEGY != "NONE");
+
+   always @(posedge i_clk or posedge rst_a) begin
+     if (rst_a) begin
+	//Same values the synchronous reset used to load, plus ibus_cyc which
+	//is asserted so the first instruction is fetched on reset release.
+	ibus_cyc      <= 1'b1;
+	o_cnt         <= 3'd0;
+	init_done     <= 1'b0;
+	o_ctrl_jump   <= 1'b0;
+	o_cnt_done    <= 1'b0;
+	o_cnt_r       <= 4'b0000;
+	stage_two_req <= 1'b0;
+     end else begin
       //ibus_cyc changes on three conditions.
       //1. i_rst is asserted. Together with the async gating above, o_ibus_cyc
       //   will be asserted as soon as the reset is released. This is how the
@@ -167,16 +184,7 @@ module serv_state
        */
       o_cnt <= o_cnt + {2'd0,o_cnt_r[3]};
       o_cnt_r <= {o_cnt_r[2:0],(o_cnt_r[3] & !o_cnt_done) | (i_rf_ready & !o_cnt_en)};
-      if (i_rst) begin
-	 if (RESET_STRATEGY != "NONE") begin
-	    o_cnt   <= 3'd0;
-	    init_done <= 1'b0;
-	    o_ctrl_jump <= 1'b0;
-	    o_cnt_done <= 1'b0;
-	    o_cnt_r <= 4'b0000;
-	    stage_two_req <= 1'b0;
-	 end
-      end
+     end
    end
 
    assign o_ctrl_trap = WITH_CSR & (i_e_op | i_new_irq | misalign_trap_sync);
@@ -190,12 +198,11 @@ module serv_state
 	 wire trap_pending = WITH_CSR & ((take_branch & i_ctrl_misalign & !ALIGN) |
 					 (i_dbus_en   & i_mem_misalign));
 
-	 always @(posedge i_clk) begin
-	    if (o_cnt_done)
+	 always @(posedge i_clk or posedge rst_a) begin
+	    if (rst_a)
+	      misalign_trap_sync_r <= 1'b0;
+	    else if (o_cnt_done)
 	      misalign_trap_sync_r <= trap_pending & o_init;
-	    if (i_rst)
-	      if (RESET_STRATEGY != "NONE")
-		misalign_trap_sync_r <= 1'b0;
 	 end
 	 assign misalign_trap_sync = misalign_trap_sync_r;
       end else

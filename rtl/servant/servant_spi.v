@@ -262,16 +262,20 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
         end
     end 
 
-    always @(posedge i_wb_clk) begin
-        if (rst_out_spi | (address_mems[0]&spi_byte_valid_d))
+    always @(posedge i_wb_clk or posedge rst_out_spi) begin
+        if (rst_out_spi)
+            data_in_intmems <= 16'h0000;
+        else if (address_mems[0]&spi_byte_valid_d)
             data_in_intmems <= 16'h0000;
         else if (en_intmems)
             data_in_intmems <= {data_in_intmems[7:0], spi_rd_data};
     end
 
-    always @(posedge i_wb_clk) begin
-        if (rst_out_spi | (address_mems[0]&spi_byte_valid_d))
-            data_in_intmems <= 8'h0000;
+    always @(posedge i_wb_clk or posedge rst_out_spi) begin
+        if (rst_out_spi)
+            data_in_intmems <= 16'h0000;
+        else if (address_mems[0]&spi_byte_valid_d)
+            data_in_intmems <= 16'h0000;
         else if (en_intmems)
             data_in_intmems <= spi_rd_data;
     end

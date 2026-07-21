@@ -60,8 +60,11 @@ module spike_mem_2#(
 	// spike_wr_en become 1 when spike_mem_buffer_x is ready to be written in spike memory
 	// when spike_wr_en is 1, spike_mem_buffer is written in memory and can either be reset, or 
 	// be set to hold the next line of the OF
-    always @(posedge clk) begin
-        if (rst || last_layer) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            spike_mem_buffer_1 <= 16'b0;
+            spike_mem_buffer_2 <= 16'b0;
+        end else if (last_layer) begin
             spike_mem_buffer_1 <= 16'b0;
             spike_mem_buffer_2 <= 16'b0;
         end else begin
@@ -127,8 +130,10 @@ module spike_mem_2#(
 	// for regression output based on last layer neurons' potential.
 	// edit this always for spike-rate-based output
 	reg [3:0] spike_counter_width;
-    always @(posedge clk) begin
-        if (rst | spike_written) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            spike_counter_width <= 0;
+        end else if (spike_written) begin
             spike_counter_width <= 0;
         end else if(valid_s1 && !last_layer && spike_counter_width == next_dim_input_feature)
                 spike_counter_width <= 0;
@@ -175,8 +180,10 @@ module spike_mem_2#(
     reg [5:0] spike_counter_height;
     reg [3:0] spike_counter_height_d;
 
-    always @(posedge clk) begin
-        if (rst | spike_finish_feature | spike_written) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            spike_counter_height <= 0;
+        end else if (spike_finish_feature | spike_written) begin
             spike_counter_height <= 0;
         end else if (spike_wr_en) begin
             spike_counter_height <= spike_counter_height + 1;
@@ -196,8 +203,11 @@ module spike_mem_2#(
 	// incremented once each pair of spike is received) spike_mem_buffer_1
 	// is saved in spike mem
     reg [clogb2(MAX_SYNAPSES)-1:0] dense_spike_counter;
-    always @(posedge clk) begin
-        if(rst | spike_written) begin
+    always @(posedge clk or posedge rst) begin
+        if(rst) begin
+            dense_spike_counter <= 0;
+        end
+        else if(spike_written) begin
             dense_spike_counter <= 0;
         end
         else
@@ -238,8 +248,10 @@ module spike_mem_2#(
 	// and to understand when the layer inference is complete
     reg [clogb2(MAX_NUMBER_OUTPUT_FEATURE)-1:0] spike_counter_output_feature;
 
-    always @(posedge clk) begin
-        if (rst | spike_written) begin
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            spike_counter_output_feature <= 0;
+        end else if (spike_written) begin
             spike_counter_output_feature <= 0;
         end else if (spike_finish_feature) begin
             spike_counter_output_feature <= spike_counter_output_feature + 1 + en_L2;

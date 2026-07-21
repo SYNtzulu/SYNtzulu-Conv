@@ -502,8 +502,10 @@ always @(posedge clk or posedge rst)
         spike_written_dd <= spike_written_d;
     end
 
-always @(posedge clk)
-    if (rst|| valid)
+always @(posedge clk or posedge rst)
+    if (rst)
+		spike_written_counter <= 0;
+	else if (valid)
 		spike_written_counter <= 0;
 	else if(spike_written) begin
             if (spike_written_counter < LAYERS ) 
@@ -690,8 +692,10 @@ wire convolution_valid;
 assign words_to_read = words_to_read_1;
 
 reg [clogb2(MAX_SYNAPSES/4-1)-1:0] convolution_valid_cnt;
-always @(posedge clk)
-    if (rst || conv_enable)
+always @(posedge clk or posedge rst)
+    if (rst)
+        convolution_valid_cnt <= 0;
+    else if (conv_enable)
         convolution_valid_cnt <= 0;
     else if (convolution_pipe_full) begin
             if(convolution_valid_cnt < words_to_read)
@@ -748,8 +752,10 @@ always @(posedge clk or posedge rst)
 
 // Completed OF counter
 reg [clogb2(MAX_NUMBER_OUTPUT_FEATURE)-1:0] output_feature_integrated_cnt;
-always @(posedge clk) begin
-    if (rst || layer_integrated_conv_d)
+always @(posedge clk or posedge rst) begin
+    if (rst)
+        output_feature_integrated_cnt <= 0;
+    else if (layer_integrated_conv_d)
         output_feature_integrated_cnt <= 0;
     else if (output_feature_integrated) begin
         if (output_feature_integrated_cnt >= number_output_feature)

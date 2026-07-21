@@ -23,14 +23,21 @@ module accumulator
     //reg signed [2*SIZEIN:0] m_reg;
     reg signed [2*SIZEIN:0] p_reg;
 
-    always @(posedge clk)
-    if (rst | clear)
+    always @(posedge clk or posedge rst)
+    if (rst)
     begin
         a_reg   <= 0;
         b_reg   <= 0;
         //c_reg   <= 0;
         add_reg <= 0;
         //m_reg   <= 0;
+        p_reg   <= 0;
+    end
+    else if (clear)
+    begin
+        a_reg   <= 0;
+        b_reg   <= 0;
+        add_reg <= 0;
         p_reg   <= 0;
     end
     else begin
