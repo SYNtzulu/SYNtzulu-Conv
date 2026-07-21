@@ -50,7 +50,7 @@ module input_buffer
 	reg slow_stream_out;
 	generate
     if (SIMD) begin
-        always @(posedge clk) begin
+        always @(posedge clk or posedge rst) begin
             if (rst)
                 slow_stream_out <= 0;
             else if (read_flag)
@@ -93,7 +93,7 @@ module input_buffer
 	wire [clogb2(CHANNELS_INT-1)-1:0] adr;
 	assign adr = external_access_en | external_access_wren ? external_addr : pointer;
 
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst)
 			pointer <= 0;
 		else if(wr_en)
@@ -107,7 +107,7 @@ module input_buffer
 					else
 						pointer <= 0;
 	
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst)
 			read_flag <= 1'b0;
 		else if(wr_en && pointer == CHANNELS_INT-1)
@@ -115,7 +115,7 @@ module input_buffer
 				else if(read_flag && slow_stream_out && pointer == CHANNELS_INT-1)
 						read_flag <= 1'b0;
 					
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst) 
 			valid <= 0;
 		else

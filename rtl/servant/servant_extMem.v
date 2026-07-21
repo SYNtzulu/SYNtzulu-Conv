@@ -25,7 +25,7 @@ module servant_extMem #(
     reg rd_en; 
 
 
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
         if (i_wb_rst) begin
             wr_en <= 0; rd_en <= 0;
         end 
@@ -75,7 +75,7 @@ module servant_extMem #(
     
     // Ack management
     reg [2:0] ack_mem;
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
         if (i_wb_rst) begin
             ack_mem[0] <= 1'b0;
             ack_mem[1] <= 1'b0;

@@ -41,7 +41,7 @@ reg [clogb2(DEPTH-1)-1:0] rd_cnt;
 reg [clogb2(DEPTH-1)-1:0] wr_cnt;
 
 reg [7:0] square_dim_output_feature_plus_one;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if(rst)
         square_dim_output_feature_plus_one <= 0;
     else 

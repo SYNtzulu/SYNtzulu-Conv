@@ -55,7 +55,7 @@ wire [13:0] decay_new;
 assign decay_new = conv_enable ? (first_input_feature ? { {2{decay[13]}}, decay } : 4096) : { {2{decay[13]}}, decay };
 
 integer i;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if(rst) begin
         en_shift <= 0;
         r_output_old <= 0;

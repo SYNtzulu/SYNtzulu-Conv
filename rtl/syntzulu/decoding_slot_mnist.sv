@@ -37,7 +37,7 @@ module decoding_slot_mnist #(
     integer idx1, idx2;
     
     // spike counting + aggiornamento massimo
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             for (i = 0; i < N_CLASSES; i = i + 1)
                 spike_count[i] <= 0;
@@ -85,7 +85,7 @@ module decoding_slot_mnist #(
     end
 
     // contatore inferenze
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst)
             inference_cnt <= 0;
         else if (valid_snn)
@@ -93,7 +93,7 @@ module decoding_slot_mnist #(
     end
 
     // segnale first_inference
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if (rst)
             first_inference <= 1;
         else

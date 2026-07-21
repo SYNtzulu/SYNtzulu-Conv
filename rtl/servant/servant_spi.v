@@ -61,7 +61,7 @@ reg [17:0] mm_read_size; // Number of bytes to read from SPI
 reg mm_spi_start;
 reg mm_spi_valid; // Status of the SPI operation
 
-always @(posedge i_wb_clk) begin
+always @(posedge i_wb_clk or posedge i_wb_rst) begin
     if (i_wb_rst) begin
         // Reset all memory mapped registers
         mm_spi_start <= 0;
@@ -125,7 +125,7 @@ end
 
 // SPI start handling: it generate a pulse when mm_spi_start is set to start the SPI operation
 reg mm_spi_start_d;
-always @(posedge i_wb_clk) begin
+always @(posedge i_wb_clk or posedge i_wb_rst) begin
     if (i_wb_rst) begin
         mm_spi_start_d <= 0;
         spi_enable_d <= 0;
@@ -148,7 +148,7 @@ reg valid_rst_cond = 0;
 always @(posedge i_wb_clk) 
 	valid_rst_cond <= mm_spi_valid && reading_spi_valid_reg;
 
-always @(posedge i_wb_clk) begin
+always @(posedge i_wb_clk or posedge i_wb_rst) begin
     if (i_wb_rst) begin
         mm_spi_valid <= 0;
         spi_rd_ack <= 0;
@@ -165,7 +165,7 @@ always @(posedge i_wb_clk) begin
 end
 
 // Ack handling
-always @(posedge i_wb_clk) begin
+always @(posedge i_wb_clk or posedge i_wb_rst) begin
     if (i_wb_rst) begin
         wb_cyc_d <= 0;
         wb_ack <= 0;
@@ -208,7 +208,7 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     reg [31:0] spi_debug_reg; // Debug register to store SPI dato
     reg spi_byte_valid_d, spi_byte_valid_dd;
     wire spi_byte_valid_pulse;
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
         if (i_wb_rst) begin
             spi_byte_valid_d <= 0;
             spi_byte_valid_dd <= 0;
@@ -221,7 +221,7 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
 
     assign spi_byte_valid_pulse = spi_byte_valid & ~spi_byte_valid_d;
 
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
         if (i_wb_rst)
             spi_debug_reg <= 32'h00000000;
         else if (spi_byte_valid_pulse)
@@ -254,7 +254,7 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
 
     reg [15:0] data_in_intmems;
     reg [14:0] address_mems; // The first LSB bit is used as valid data, the others 14 are reserved for the address
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge rst_out_spi) begin
         if (rst_out_spi) begin
             address_mems <= 0;
         end else if (spi_byte_valid_d) begin 
@@ -283,7 +283,7 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     // layout dei pesi in flash.txt (es. C7 15 -> 0xC715). Una sola scrittura, sul
     // secondo byte del pair. Il path campioni (input buffer) resta invariato sotto.
     reg [7:0] hi_byte_intmem;
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge rst_out_spi) begin
         if (rst_out_spi)
             hi_byte_intmem <= 8'h00;
         else if (en_intmems & ~address_mems[0])   // primo byte del pair = byte alto
@@ -318,7 +318,7 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     // byte (address_mems[1:0]==11), all'indirizzo di parola address_mems[11:2].
     wire en_ram_byte = en_ram & spi_byte_valid_pulse;
     reg [23:0] ram_acc;   // primi 3 byte del gruppo
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge rst_out_spi) begin
         if (rst_out_spi)
             ram_acc <= 24'b0;
         else if (en_ram_byte & (address_mems[1:0] != 2'b11))

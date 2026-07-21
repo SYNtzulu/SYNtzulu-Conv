@@ -146,7 +146,7 @@ initial
 
 
 
-always @(posedge iClock)
+always @(posedge iClock or posedge iReset)
   if (iReset)
     begin
       cState <= stErrorRecovery;

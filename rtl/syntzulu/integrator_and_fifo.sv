@@ -53,7 +53,7 @@ module integrator_and_fifo #(
     // wait fifo output
     reg en_d;
     reg [WIDTH-1:0] stimolo_d;
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if (rst) begin
             en_d <= 0;
             stimolo_d <= 0;

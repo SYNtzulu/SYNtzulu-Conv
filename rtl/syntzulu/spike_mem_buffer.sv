@@ -28,7 +28,7 @@ module spike_mem_buffer (
     reg [3:0] spike_counter;
 
     reg en_L2_d;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst) begin
             en_L2_d <= 0;
         end
@@ -42,7 +42,7 @@ module spike_mem_buffer (
 
     assign carry = dense_enable && spike_counter[0] ? 1'b1 : 1'b0;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst) begin
             s2_d <= 0;
         end
@@ -56,7 +56,7 @@ module spike_mem_buffer (
     reg [15:0] input_buffer_s2;
 
     reg s2_ready, s2_ready_d;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst) begin
             s2_ready <= 0;
             s2_ready_d <= 0;
@@ -75,7 +75,7 @@ module spike_mem_buffer (
     wire [15:0] input_s1_dense_carry = input_buffer [1:0] << (13-2*spike_counter_3_1);
     wire [15:0] input_s1_conv  = (s1 && valid_s1) << (15-spike_counter);
     
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst)
             input_buffer_s2 <= 16'h0000;
         else
@@ -85,7 +85,7 @@ module spike_mem_buffer (
     wire spike_counter_3_1_equal_zero = spike_counter_3_1 == 0;
     wire spike_counter_equal_zero = spike_counter == 0;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             spike_mem_in <= 16'h0000;
         end else if (dense_two_valid) begin
@@ -147,7 +147,7 @@ module spike_mem_buffer (
     end
 
     reg valid_d;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst)
             valid_d <= 0;
         else
@@ -157,14 +157,14 @@ module spike_mem_buffer (
     assign spike_wr_en = dense_enable ? valid || finish_synapses :  valid || valid_d;
 
     reg spike_wr_en_d;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst)
             spike_wr_en_d <= 0;
         else
             spike_wr_en_d <= spike_wr_en;
     end
 /*
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst)
             spike_written <= 0;
         else if ((spike_wr_en_d && (spike_addr_d >= SYNAPSES)))
@@ -175,7 +175,7 @@ module spike_mem_buffer (
             spike_written <= 0; 
     end*/
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst)
             spike_written <= 0;
         else if(!spike_written)
@@ -211,7 +211,7 @@ module spike_mem_buffer (
 
     reg jump_L1, jump_L2;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst) begin
             jump_L1 <= 0;
             jump_L2 <= 0;
@@ -237,7 +237,7 @@ module spike_mem_buffer (
     wire step_dense  = dense_enable && (spike_counter_1_0_equal_1 || spike_counter_1_0_equal_2);
     
     reg [12:0] spike_addr;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst)
             spike_addr <= 0;
         else if(!last_layer && (valid_one_s)) begin
@@ -257,7 +257,7 @@ module spike_mem_buffer (
     reg [12:0] spike_addr_d;
     reg [12:0] spike_addr_dd;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if(rst) begin
             spike_addr_d <= 0;
             spike_addr_dd <= 0;
@@ -270,7 +270,7 @@ module spike_mem_buffer (
 
     assign spike_wr_addr = (s2_ready_d && !s2_ready) ? spike_addr_dd + 64 : spike_addr_dd;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
     if (rst)
         valid_active_group <= 0;
     else

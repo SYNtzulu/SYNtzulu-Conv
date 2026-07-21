@@ -46,7 +46,7 @@ module stack_new #(
             entries_cnt <= entries_cnt + 1'b1;
     end
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst)
             stream_cnt <= 0;
         else if (stream_out && (entries_cnt != 0))
@@ -55,7 +55,7 @@ module stack_new #(
             stream_cnt <= stream_cnt - 1'b1;
     end
 
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if (rst)
             done <= 0;
         else if ((stream_cnt == 1) ||

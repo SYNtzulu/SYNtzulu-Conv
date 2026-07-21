@@ -52,7 +52,7 @@ module encoding_spike_buffer
         .doutb(mem_out)
     );
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             read_flag         <= 1'b0;
         end else if (wr_en && pointer == CHANNELS_INT-1) begin
@@ -62,7 +62,7 @@ module encoding_spike_buffer
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst)
             pointer <= 0;
         else if (wr_en) begin
@@ -74,7 +74,7 @@ module encoding_spike_buffer
     end
 
     reg valid_encoding_real, valid_encoding_real_d, valid_encoding_real_dd;
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if(rst) begin
             valid_encoding_real_d <= 0;
             valid_encoding_real_dd <= 0;
@@ -94,7 +94,7 @@ module encoding_spike_buffer
 
     assign external_data_out = mem_out;
 
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if(rst)
             bit_pair_idx_d <= 0;
         else
@@ -104,13 +104,13 @@ module encoding_spike_buffer
 
     reg streaming_d;
 
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if(rst)
             streaming_d <= 0;
         else
             streaming_d <= streaming;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             bit_pair_idx   <= 0;
             word_idx       <= 0;

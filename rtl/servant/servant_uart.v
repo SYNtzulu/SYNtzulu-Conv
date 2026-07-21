@@ -34,7 +34,7 @@ module servant_uart #(
     reg		   uart_send_next, uart_send;
 	assign hp_tx_start = uart_wren & uart_hp;
 
-    always @(posedge i_wb_clk)
+    always @(posedge i_wb_clk or posedge wb_rst)
             if(wb_rst)
                 uart_wren <= 0;
             else
@@ -176,7 +176,7 @@ module servant_uart #(
 
     assign hp_tx_start = uart_wren & uart_hp;
 
-    always @(posedge i_wb_clk)
+    always @(posedge i_wb_clk or posedge wb_rst)
         if (wb_rst)
             uart_wren <= 0;
         else

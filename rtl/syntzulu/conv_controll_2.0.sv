@@ -57,7 +57,7 @@ module conv_controll_2 #(
 	// number_output_feature_eff is divided by 2 if two cores are used
 	// it is also subtracted by one to use == in counters control
     reg [clogb2(MAX_NUMBER_OUTPUT_FEATURE)-2:0] number_output_feature_eff;
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if(rst)
             number_output_feature_eff<=0;
         else
@@ -72,7 +72,7 @@ module conv_controll_2 #(
     
     wire convolution_enable = en && !convolution_finish; // it should be more or less the same as en_conv from snn_lp
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             en_d <= 0;
             en_dd <= 0;
@@ -84,7 +84,7 @@ module conv_controll_2 #(
     end
 
 	// bo non sembra stabile, sembra possa  fare ping pong strani con  if(en_L2) number_output_feature_eff <= (number_output_feature>>1) -1; etc..
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if(rst)
             en_L2 <= 0;
         else 
@@ -176,7 +176,7 @@ module conv_controll_2 #(
     reg [1:0] row_counter_d, row_counter_dd;
     reg input_feature_ready_d;
     reg weights_buffer_ready_d;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             input_feature_ready_d <= 0;
             weights_buffer_ready_d <= 0;
@@ -187,7 +187,7 @@ module conv_controll_2 #(
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             row_counter_d <= 0;
             row_counter_dd <= 0;
@@ -202,7 +202,7 @@ module conv_controll_2 #(
     wire [MAX_INPUT_FEATURE*MAX_KERNEL-1:0] input_feature;
     reg input_feature_ready;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             input_feature_ready <= 0;
         end 
@@ -289,7 +289,7 @@ module conv_controll_2 #(
 	// 1 when state/threshold comparison is required
     assign spike_check = ~conv_enable | last_input_feature;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             convolution_finish <= 0;
         end else begin
@@ -315,7 +315,7 @@ module conv_controll_2 #(
 	// it needs initialization from the outside because depending on the presence or
 	// absence of padding it starts from 15 or 14.
     reg [3:0] last_state;
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if(rst)
             last_state <= 0;
         else
@@ -340,7 +340,7 @@ module conv_controll_2 #(
 
     reg new_kernel_d;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             new_kernel_d <= 0;
         end else begin

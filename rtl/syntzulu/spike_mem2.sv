@@ -44,7 +44,7 @@ module spike_mem_2#(
 	reg s2_d;
     reg valid_s2_d;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             s2_d <= 0;
             valid_s2_d <= 0;
@@ -114,7 +114,7 @@ module spike_mem_2#(
 	// the delayed version, i.e. valid_s1_d, works just fine as a valid signal
 	// to enable stack annotation
     reg valid_s1_d;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             valid_s1_d <= 0;
         end else begin
@@ -143,7 +143,7 @@ module spike_mem_2#(
 	// dense: when dense_spike_counter is a multiple of 8, e.g. [2:0] == 8. Spikes are received in pairs, so coutner == 8 means 16 spikes have been received).
 	// 		  or when the counter is equal to the overall number of synapses of the layer
     reg spike_wr_en;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             spike_wr_en <= 0;
         end else begin
@@ -158,7 +158,7 @@ module spike_mem_2#(
 
 	// spike mem write enable
     reg spike_wr_en_d;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             spike_wr_en_d <= 0;
         end else begin
@@ -183,7 +183,7 @@ module spike_mem_2#(
         end
     end
 	// delayed version used to write OF computed by CORE2
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             spike_counter_height_d <= 0;
         end else begin
@@ -207,7 +207,7 @@ module spike_mem_2#(
 
 
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             spike_stack_addr <= 0;
         end
@@ -250,7 +250,7 @@ module spike_mem_2#(
 	// used to generate OF write address of core 2, i.e. core1 wr_addr + 1
     reg [clogb2(MAX_NUMBER_OUTPUT_FEATURE)-1:0] spike_counter_output_feature_L2;
     
-    always @(posedge clk) 
+    always @(posedge clk or posedge rst) 
         if(rst)
             spike_counter_output_feature_L2 <= 0;
         else 
@@ -271,7 +271,7 @@ module spike_mem_2#(
 	// valid_encoding is used to write the input spikes
 	// into the write spike mem half
     reg lsb_layer_counter ;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             lsb_layer_counter <= 0;
         end else begin
@@ -289,7 +289,7 @@ module spike_mem_2#(
 	// select_spike_out_dd identifies the right 4-bit spike group to extract from spike_mem_out_16
     reg [1:0] select_spike_out_d;
     reg [1:0] select_spike_out_dd;
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             select_spike_out_d <= 0;
             select_spike_out_dd <= 0;
@@ -310,7 +310,7 @@ module spike_mem_2#(
     wire [SPIKE_MEM_WIDTH-1:0] spike_mem_out_bram;
 
 	// first and last row padding implementation
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             spike_mem_out_16 <= 0;
         end else begin
@@ -323,25 +323,25 @@ module spike_mem_2#(
 
     BRAM_singlePort_readFirst
     #(
-    .RAM_WIDTH(SPIKE_MEM_WIDTH),          // Specify RAM data width
-    .RAM_DEPTH(512),               // Specify RAM depth (number of entries)
-    .RAM_PERFORMANCE("LOW_LATENCY"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
-    .INIT_FILE("")                   // Specify name/location of RAM initialization file if using one (leave blank if not)
+    .RAM_WIDTH(SPIKE_MEM_WIDTH),          
+    .RAM_DEPTH(512),               
+    .RAM_PERFORMANCE("LOW_LATENCY"), 
+    .INIT_FILE("")                   
     )
     spike_mem
     (
-    .addra({!lsb_layer_counter,spike_wr_addr[MEM_DEPTH_BITS-1:0]}),                  // Port A address bus, driven by axi bus
-    .addrb({lsb_layer_counter,spike_rd_addr_16[MEM_DEPTH_BITS-1:0]}),                  // Port B address bus, it goes in the accumulator
-    .dina(spike_mem_in),                       // Port A RAM input data, driven by axi bus
-    .clk(clk),                       // Clock
-    .wea(spike_wr_en | spike_wr_en_d),                      // Port A write enable
-    .ena(spike_wr_en | spike_wr_en_d),                      // Port A RAM Enable, for additional power savings, disable port when not in use
-    .enb(1'b1),                      // Port B RAM Enable, for additional power savings, disable port when not in use
-    .rst(rst),                       // Port A and B output reset (does not affect memory contents)
-    .regceb(1'b1),                   // Port B output register enable
+    .addra({!lsb_layer_counter,spike_wr_addr   [MEM_DEPTH_BITS-1:0]}),                  
+    .addrb({lsb_layer_counter, spike_rd_addr_16[MEM_DEPTH_BITS-1:0]}),               
+    .dina (spike_mem_in),                       
+    .clk  (clk),                     
+    .wea  (spike_wr_en | spike_wr_en_d),                     
+    .ena  (spike_wr_en | spike_wr_en_d),                     
+    .enb  (1'b1),                      
+    .rst(rst),                       
+    .regceb(1'b1),                   
     
-    .doutb(spike_mem_out_bram)              // Port B RAM output data
-        );
+    .doutb(spike_mem_out_bram)              
+    );
     
     // The following function calculates the address width based on specified RAM depth
 	function integer clogb2;

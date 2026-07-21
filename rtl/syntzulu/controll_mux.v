@@ -28,7 +28,7 @@ module controll_mux#(
 	assign row_finish = (next_state <= stride - padding) && en && input_feature_ready;
 
 	reg input_feature_ready_d;
-	always @(posedge clk) begin
+	always @(posedge clk or posedge rst) begin
 		if(rst) begin
 			input_feature_ready_d <= 0;
 		end else begin
@@ -36,7 +36,7 @@ module controll_mux#(
 		end
 	end
 
-	always @(posedge clk) begin
+	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			state <= 0;
 			next_state <= 0;

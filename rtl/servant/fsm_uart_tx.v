@@ -8,7 +8,7 @@ module fsm_uart_tx #( parameter N = 10) (
 
 reg [clogb2(N-1):0] cnt;
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
 	if (rst) begin
 		cnt <= 0;
 	end
@@ -23,7 +23,7 @@ always @(posedge clk)
 	end
 
 reg continue_r;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
 	if (rst)
 		continue_r <= 0;
 	else if (cnt != 0)

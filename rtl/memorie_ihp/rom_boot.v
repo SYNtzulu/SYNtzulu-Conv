@@ -14,8 +14,8 @@ module rom_boot
    output reg  [31:0] o_wb_rdt,
    output reg         o_wb_ack);
 
-   // ack a 1 ciclo, come servant_ram
-   always @(posedge i_wb_clk)
+   // ack a 1 ciclo, come servant_ram (reset asincrono)
+   always @(posedge i_wb_clk or posedge i_wb_rst)
      if (i_wb_rst) o_wb_ack <= 1'b0;
      else          o_wb_ack <= i_wb_cyc & !o_wb_ack;
 

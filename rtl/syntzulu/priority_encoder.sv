@@ -39,7 +39,7 @@ module priority_encoder #(
 
 	// once four spikes are dispatched, they are reset from the 3x3 FF array 
 	// to permit to the system to select the next four spikes when present
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if (rst)
 			kernel <= 0;
 		else begin
@@ -56,28 +56,28 @@ module priority_encoder #(
 		end
 
 	reg en_d;
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst)
 			en_d <= 0;
 		else
 			en_d <= en;
 
 	reg en_dd;
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst)
 			en_dd <= 0;
 		else
 			en_dd <= en_d;
 	
 	reg row_finish_d;
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst)
 			row_finish_d <= 0;
 		else
 			row_finish_d <= row_finish;
 
 	reg row_finish_dd;
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst)
 			row_finish_dd <= 0;
 		else
@@ -94,7 +94,7 @@ module priority_encoder #(
 	assign PE_finish = pooling_enable ? (en_d && !row_finish_d) : (conv_enable && PE_active && last_spike); 
 
 	reg last_spike_d;
-	always @(posedge clk)
+	always @(posedge clk or posedge rst)
 		if(rst)
 			last_spike_d <= 0;
 		else
@@ -108,7 +108,7 @@ module priority_encoder #(
 	// or to break a combinational loop
 	wire last_two_spike = active_spike <= 8 ? 1 : 0;
 	reg PE_active;
-	always @(posedge clk) begin
+	always @(posedge clk or posedge rst) begin
 		if (rst)
 			PE_active <= 0;
 		else begin

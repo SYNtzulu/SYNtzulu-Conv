@@ -259,7 +259,7 @@ wire detection_computed;
 assign detection_computed = conv_enable ? (pooling_enable ? 0 : detection_out_pipe) : spike_check;
 
 reg last_input_feature_d;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if(rst)
         last_input_feature_d <= 0;
     else 
@@ -481,7 +481,7 @@ reg [clogb2(MAX_SYNAPSES)-1:0] SYNAPSES;
 // the number of synapses are set by the instruction or
 // by the number of input channel at the beginning of the inference 
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if(rst)
         SYNAPSES <= `INPUT_SPIKE_1/4-1;
     else if (spike_written_dd) begin
@@ -492,7 +492,7 @@ always @(posedge clk)
     end
 
 reg spike_written_d, spike_written_dd;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst) begin
         spike_written_d <= 0;
         spike_written_dd <= 0;
@@ -523,7 +523,7 @@ assign NEURON = (dense_enable) ? neuron : 0; // not used for conv layers
 wire stream_out_done;
 
 assign stream_out_done = stream_out_done_1;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if(rst)
         neuron_cnt <= 0;
     else
@@ -537,7 +537,7 @@ always @(posedge clk)
 assign layer_dispatched = stream_out_done && (neuron_cnt == NEURON); 
 
 /////// LAYER COUNTER /////////////////////////////////////////////////
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst)
         layer_counter <= 0;
     else begin
@@ -575,7 +575,7 @@ assign conv_enable = !dense_enable; // threfore, conv_enable is 1 also for pooli
 assign dense_enable = (layer_type == 2'b00) ? 1 : 0;
 assign pooling_enable = (layer_type == 2'b10) ? 1 : 0;
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst)
         en_conv <= 0;
     else if (dense_enable | convolution_finish)
@@ -655,7 +655,7 @@ conv_controll_2 #(
 
 /////// LAYER ENABLE /////////////////////////////////////////////////
 reg layer_enable, layer_enable_d, layer_enable_dd;
-always @(posedge clk) begin
+always @(posedge clk or posedge rst) begin
     if (rst)
         layer_enable <= 1'b0;
     else if (((en_conv && !pooling_enable) || stream_out_1))// || stream_out_2))
@@ -664,7 +664,7 @@ always @(posedge clk) begin
         layer_enable <= 1'b0;
 end 
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst) begin
 		layer_enable_d  <= 0;
 		layer_enable_dd <= 0;
@@ -720,7 +720,7 @@ end
 // used to only increments integrated_neurons_cnt during the last IF computation
 wire next_reset_cond = conv_enable && !last_input_feature_out;
 
-always @(posedge clk) begin
+always @(posedge clk or posedge rst) begin
     if (rst)
         integrated_neurons_cnt <= 0;
     else if (integrated_neuron) begin
@@ -736,7 +736,7 @@ end
 reg output_feature_integrated; // 1 for 1 c.c. when the OF is computed
 wire finish_integrated_neuron = integrated_neurons_cnt == neuron_limit;
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst)
         output_feature_integrated <= 0;
     else begin
@@ -775,7 +775,7 @@ always @(*)
 
 // it notifies, for 1 c.c., when the dense layer is integrated
 reg layer_integrated_dense;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst)
         layer_integrated_dense <= 0;
     else begin
@@ -786,7 +786,7 @@ always @(posedge clk)
     end
 
 reg layer_integrated_conv_d;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst) begin
         layer_integrated_conv_d  <= 0;
     end 
@@ -798,7 +798,7 @@ assign layer_integrated = conv_enable ? layer_integrated_conv : layer_integrated
 
 reg layer_integrated_d, layer_integrated_dd;
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst) begin
         layer_integrated_d  <= 0;
         layer_integrated_dd <= 0;
@@ -830,7 +830,7 @@ wire [clogb2(MAX_SYNAPSES/4-1)-1:0] words_to_read_1, words_to_read_2, words_to_r
 wire empty, empty_1, empty_2;
 reg en_d;
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst) begin
         en_d <= 0;
     end
@@ -926,7 +926,7 @@ parameter SPIKE_MEM_DEPTH = 256;
 
 reg lsb_layer_counter;
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if(rst)
         lsb_layer_counter <= 0;
     else 

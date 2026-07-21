@@ -22,7 +22,7 @@ module weight_buffer(
 
 	reg [1:0] write_en_pipe;
 
-	always @(posedge clk) begin
+	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			write_en_pipe <= 2'b0;
 		end 
@@ -33,7 +33,7 @@ module weight_buffer(
 
 
 	// Riempimento buffer
-	always @(posedge clk) begin
+	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			count <= 0;
 			weights_ready <= 0;

@@ -42,7 +42,7 @@ module delta_modulator_multichannel #(
 	wire signed [WIDTH-1:0] delta;   
 
     reg [clogb2(CHANNELS-1)-1:0] channel_cnt; //, r_channel_cnt, rr_channel_cnt;
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if (rst) begin
             channel_cnt <= 0;
             //r_channel_cnt <= 0;
@@ -90,7 +90,7 @@ module delta_modulator_multichannel #(
   wire signed [WIDTH:0] cond_spike_neg = (data_old - delta);
   wire signed [WIDTH:0] cond_spike_pos = (data_old + delta);
 
-  always @(posedge clk ) begin
+  always @(posedge clk or posedge rst) begin
     if (rst) begin
       prev_sample <= 0;
       {pos_spike, neg_spike} <= 0;

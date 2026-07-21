@@ -137,7 +137,7 @@ initial
 `endif
 
 
-always @(posedge iClock)  // serial bit output timer
+always @(posedge iClock or posedge iReset)  // serial bit output timer
   `ifdef GlobalReset
   if (iReset)
     begin
@@ -157,7 +157,7 @@ always @(posedge iClock)  // serial bit output timer
     end
 
 
-always @(posedge iClock)  // transmitter FSM
+always @(posedge iClock or posedge iReset)  // transmitter FSM
   `ifdef GlobalReset
   if (iReset)
     begin
@@ -217,7 +217,7 @@ always @(posedge iClock)  // transmitter FSM
     endcase
 
 
-always @(posedge iClock)  // registered serial output prevents glitches
+always @(posedge iClock or posedge iReset)  // registered serial output prevents glitches
   `ifdef GlobalReset
   if (iReset)
     cnTxd <= 0;

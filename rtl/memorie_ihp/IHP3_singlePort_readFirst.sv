@@ -163,7 +163,7 @@ module IHP3_singlePort_readFirst #(
       // 2 cicli di latenza (registro d'uscita con rst/regceb)
       reg [RAM_WIDTH-1:0] doutb_reg = {RAM_WIDTH{1'b0}};
 
-      always @(posedge clk)
+      always @(posedge clk or posedge rst)
         if (rst)
           doutb_reg <= {RAM_WIDTH{1'b0}};
         else if (regceb)

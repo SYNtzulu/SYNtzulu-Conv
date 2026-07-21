@@ -54,16 +54,16 @@ module instruction_memory #(
         .doutb(bram_out_data)
     );
 
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if (rst) bram_out <= 0;
         else     bram_out <= bram_out_data;
 
     // FSM transition
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
         if (rst) state <= IDLE;
         else     state <= next_state;
 /*
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst)
             new_layer_en <= 0;
         else if (en)
@@ -89,7 +89,7 @@ module instruction_memory #(
     end
 
     // Instruction assembly
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             read_cnt      <= 0;
             addr          <= 0;

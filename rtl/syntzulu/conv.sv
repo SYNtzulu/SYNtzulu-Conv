@@ -20,7 +20,7 @@ localparam SUM = WEIGHTS/2;
 localparam PIPE = 5; // pipeline stages
 
 reg [4:0] en_conv_shift;
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst)
         en_conv_shift <= 0;
     else begin
@@ -41,7 +41,7 @@ assign weights[3] = weights_in[4*DATA_WIDTH-1:3*DATA_WIDTH];
 reg [PIPE-1:0] en_shift;
 //reg [PIPE-1:0] dense_en_shift;
 
-always @(posedge clk)
+always @(posedge clk or posedge rst)
     if (rst)
         en_shift <= 0;
     else begin

@@ -24,7 +24,7 @@ module lif_pipe (
 
     reg [10:0] pipe_en_L2;
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             pipe_detection <= 11'b0;
             pipe_first_input_feature <= 7'b0;

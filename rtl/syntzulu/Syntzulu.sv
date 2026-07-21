@@ -270,7 +270,7 @@ wire [BUFFER_WIDTH-1:0] output_buffer_din;
 wire [clogb2(OUTPUT_BUFFER_DEPTH)-1:0] output_buffer_wr_addr;
 reg reset_potential;
 
-always @(posedge clk_snn)
+always @(posedge clk_snn or posedge rst)
     if(rst)
         reset_potential <= 1;
     else if(valid_snn)

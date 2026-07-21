@@ -65,7 +65,7 @@ module clk_gen_wb #(
     // ---------------------------------------------------------------------
     reg clk_en;
     reg gate_arm;
-    always @(posedge i_clk)
+    always @(posedge i_clk or posedge o_rst)
         if (o_rst)
             clk_en <= 1'b1;
         else if (irq_sync)
@@ -76,7 +76,7 @@ module clk_gen_wb #(
     // ---------------------------------------------------------------------
     // Wishbone register : arm sleep (write bit0) / read back gate state (bit0)
     // ---------------------------------------------------------------------
-    always @(posedge i_clk)
+    always @(posedge i_clk or posedge o_rst)
         if (o_rst) begin
             gate_arm        <= 1'b0;
             o_wb_clkgen_rdt <= 32'b0;
@@ -89,7 +89,7 @@ module clk_gen_wb #(
             end
         end
 
-    always @(posedge i_clk)
+    always @(posedge i_clk or posedge o_rst)
         if (o_rst)
             o_wb_clkgen_ack <= 1'b0;
         else
@@ -116,7 +116,7 @@ module clk_gen_wb #(
     localparam PW = (SLOW_DIV <= 2) ? 1 : $clog2(SLOW_DIV);
     reg [PW-1:0] slow_cnt;
     reg          slow_tick_r;
-    always @(posedge i_clk)
+    always @(posedge i_clk or posedge o_rst)
         if (o_rst) begin
             slow_cnt    <= {PW{1'b0}};
             slow_tick_r <= 1'b0;

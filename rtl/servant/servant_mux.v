@@ -119,7 +119,7 @@ module servant_mux
    end
 
    // Slave ack signal multiplexer
-   always @(posedge i_clk) begin
+   always @(posedge i_clk or posedge i_rst) begin
       if(i_rst)
          o_wb_cpu_ack <= 0;
       else if(i_wb_cpu_cyc & !o_wb_cpu_ack)
