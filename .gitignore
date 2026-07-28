@@ -5,3 +5,20 @@
 
 # Build / sim work products
 work/*.vcd
+rtl_sim
+gate_sim
+ps_sim
+mixed_sim
+post_syn_sim
+
+# ASIC flow: everything derived from orfs_setup/blocks.mk + the RTL
+# absolute path of this repo, written by "make setup_orfs"
+orfs_setup/paths.mk
+# ORFS config.mk + constraint.sdc, generated per block
+orfs_setup/blocks/
+# post-synthesis netlists, reports and .params sidecars
+orfs_netlist/
+# mixed-simulation glue (wrapper + renamed netlist)
+output/ps/
+
+__pycache__/
