@@ -36,16 +36,19 @@ module controll_mux#(
 		end
 	end
 
+	// Calcolo combinatorio del prossimo stato. Era un blocking "=" su
+	// next_state dentro il blocco sequenziale, seguito da "state <= next_state":
+	// race in simulazione con tutti i lettori di next_state/row_finish.
+	wire [3:0] next_state_calc = (state <= stride - padding) ? last_state : state - stride;
+
 	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			state <= 0;
 			next_state <= 0;
 		end else if(conv_enable) begin
 			if (en && input_feature_ready) begin
-				// Calcola prossimo stato
-				next_state = (state <= stride - padding) ? last_state : state - stride;
-				// Aggiorna stato
-				state <= next_state;
+				next_state <= next_state_calc;
+				state <= next_state_calc;
 			end
 			else if (input_feature_ready && !input_feature_ready_d) begin
 				// Se input_feature_ready è appena diventato alto, aggiorna stato

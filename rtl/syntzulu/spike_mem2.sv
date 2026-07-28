@@ -71,32 +71,31 @@ module spike_mem_2#(
             spike_mem_buffer_1 <= 16'b0;
             spike_mem_buffer_2 <= 16'b0;
         end else begin
-			// when spike_mem_buffer is written in spike memory is also reset
-            if(spike_wr_en)
-                spike_mem_buffer_1 = 16'b0;
-            if(spike_wr_en_d)
-                spike_mem_buffer_2 = 16'b0;
+			// when spike_mem_buffer is written in spike memory is also reset.
+			// NB: il clear era un blocking "=" seguito da shift non-blocking
+			// sugli stessi registri: in sim la memoria poteva campionare 0 al
+			// posto della parola (race), in hardware no. Ora il clear e' parte
+			// dello stesso albero non-blocking: la memoria scrive sempre il
+			// valore vecchio del flop e il buffer riparte azzerato/ricaricato.
 			// During dense computation, both the spikes are stored in spike_mem_buffer_1
-            if(dense_enable && valid_s1) begin
-                spike_mem_buffer_1 <= {s2, s1, spike_mem_buffer_1[15:2]};
-			// During conv computation: 
-            end else if(conv_enable) begin
-                if(valid_s1) begin
-					// if spike_mem_buffer is being reset, 
-					// and at the same c.c. the first spike of the next OF's row is arriving:
-                    if(spike_wr_en)
-                        spike_mem_buffer_1 <= {s1, 15'b0};
-					// otherwise, if it is only arriving a new spike..
-                    else
-                        spike_mem_buffer_1 <= {s1, spike_mem_buffer_1[15:1]};
-                end
-                if(valid_s2_d) begin
-                    if(spike_wr_en_d)
-                        spike_mem_buffer_2 <= {s2_d, 15'b0};
-                    else 
-                        spike_mem_buffer_2 <= {s2_d, spike_mem_buffer_2[15:1]};
-                end
-            end
+            if(dense_enable && valid_s1)
+                spike_mem_buffer_1 <= spike_wr_en ? {s2, s1, 14'b0}
+                                                  : {s2, s1, spike_mem_buffer_1[15:2]};
+			// During conv computation:
+			// if spike_mem_buffer is being reset, and at the same c.c. the
+			// first spike of the next OF's row is arriving -> {s1, 15'b0};
+			// otherwise shift in the new spike.
+            else if(conv_enable && valid_s1)
+                spike_mem_buffer_1 <= spike_wr_en ? {s1, 15'b0}
+                                                  : {s1, spike_mem_buffer_1[15:1]};
+            else if(spike_wr_en)
+                spike_mem_buffer_1 <= 16'b0;
+
+            if(!(dense_enable && valid_s1) && conv_enable && valid_s2_d)
+                spike_mem_buffer_2 <= spike_wr_en_d ? {s2_d, 15'b0}
+                                                    : {s2_d, spike_mem_buffer_2[15:1]};
+            else if(spike_wr_en_d)
+                spike_mem_buffer_2 <= 16'b0;
         end
     end
 
@@ -345,7 +344,10 @@ module spike_mem_2#(
     .RAM_DEPTH(512),
     .RAM_PERFORMANCE("LOW_LATENCY"),
     .INIT_FILE(""),
-    .N_BANK(SPIKE_MEM_BANKS)
+    .N_BANK(SPIKE_MEM_BANKS),
+	// the spike mem is read back on locations it never wrote (padding rows,
+	// partially filled words): it must power up cleared, not random.
+    .RESET_MEM(1)
     )
     spike_mem
     (
