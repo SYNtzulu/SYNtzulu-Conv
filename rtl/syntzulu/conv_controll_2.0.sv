@@ -50,8 +50,11 @@ module conv_controll_2 #(
 	wire new_kernel; // ask for a new receptive field
 
     reg input_feature_finish_d;
-    always @(posedge clk) begin
-        input_feature_finish_d <= input_feature_finish;
+    always @(posedge clk or posedge rst) begin
+        if (rst)
+            input_feature_finish_d <= 0;
+        else
+            input_feature_finish_d <= input_feature_finish;
     end
     
 	// number_output_feature_eff is divided by 2 if two cores are used

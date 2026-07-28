@@ -164,6 +164,7 @@ always @(posedge iClock or posedge iReset)  // transmitter FSM
       cState <= stIdle;
       cReady <= 0;
       cBitIndex <= 0;
+      cBuffer <= 0;
     end
   else
   `endif

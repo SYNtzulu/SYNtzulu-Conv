@@ -284,7 +284,8 @@ module servant#(
 	
    servant_gpio gpio
      (.i_wb_clk (wb_clk),
-      .i_wb_adr (wb_gpio_adr),            
+      .i_wb_rst (wb_rst),
+      .i_wb_adr (wb_gpio_adr),
       .i_wb_dat (wb_gpio_dat),
       .i_wb_we  (wb_gpio_we),
       .i_wb_cyc (wb_gpio_cyc),

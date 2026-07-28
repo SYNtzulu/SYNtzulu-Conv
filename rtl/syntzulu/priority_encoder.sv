@@ -116,8 +116,10 @@ module priority_encoder #(
 		end	
 	end
 
-	always @(posedge clk)
-		if(en_d && !en_dd)
+	always @(posedge clk or posedge rst)
+		if(rst)
+			conv_en <= 0;
+		else if(en_d && !en_dd)
 			conv_en <= 1;
 		else if(input_feature_finish_d)
 			conv_en <= 0;

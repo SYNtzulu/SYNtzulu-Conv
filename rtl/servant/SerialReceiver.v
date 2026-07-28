@@ -150,11 +150,14 @@ always @(posedge iClock or posedge iReset)
   if (iReset)
     begin
       cState <= stErrorRecovery;
-      cRxd <= 0; 
+      cRxd <= 0;
       cRxdSyncPipe <= 0;
       cBitCounter <= 0;
-      cReceived <= 0; 
+      cReceived <= 0;
       cBreak <= 0;
+      cTimer <= 0;
+      cTimerIsZero <= 0;
+      cData <= 0;
     end
   else
     begin

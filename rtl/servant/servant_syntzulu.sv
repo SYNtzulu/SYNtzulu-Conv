@@ -81,24 +81,27 @@ module servant_syntzulu#(
     always @(posedge i_wb_clk or posedge i_wb_rst)
         if (i_wb_rst)
             boot_rst <= 1'b1;
-        else if (i_cpu_cyc && (i_cpu_adr[19:16] == 4'h5) && o_cpu_ack)
+        else if (i_cpu_cyc && i_cpu_we && (i_cpu_adr[19:16] == 4'h5) && o_cpu_ack)
             boot_rst <= i_cpu_dat[0];
 
-    reg o_cpu_ack_int, o_cpu_ack_d, o_cpu_ack_dd; 
+    reg o_cpu_ack_int, o_cpu_ack_d, o_cpu_ack_dd;
     reg [7:0] i_cpu_adr_d;
+    reg [7:0] rd_address_output_buffer;
 
-    always @(posedge i_wb_clk) begin
-      o_cpu_ack_int <= 1'b0;
-	  o_cpu_ack_d <= o_cpu_ack_int;
-	  o_cpu_ack_dd <= o_cpu_ack_d;
-	  i_cpu_adr_d <= i_cpu_adr[27:20];
-      if (i_cpu_cyc & !o_cpu_ack & !o_cpu_ack_d & !o_cpu_ack_dd)
-	      o_cpu_ack_int <= 1'b1;
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
       if (i_wb_rst) begin
 	      o_cpu_ack_int <= 1'b0;
 		  o_cpu_ack_d <= 1'b0;
 		  o_cpu_ack_dd <= 1'b0;
 		  i_cpu_adr_d <= 0;
+	  end
+	  else begin
+	      o_cpu_ack_int <= 1'b0;
+		  o_cpu_ack_d <= o_cpu_ack_int;
+		  o_cpu_ack_dd <= o_cpu_ack_d;
+		  i_cpu_adr_d <= i_cpu_adr[27:20];
+	      if (i_cpu_cyc & !o_cpu_ack & !o_cpu_ack_d & !o_cpu_ack_dd)
+		      o_cpu_ack_int <= 1'b1;
 	  end
    end
 
@@ -120,6 +123,7 @@ module servant_syntzulu#(
         if (i_wb_rst) begin
             o_cpu_rdt     <= 32'b0;
             snn_valid_rst <= 1'b0;
+            rd_address_output_buffer <= 8'b0;
         end else if (i_cpu_cyc)
 			case (i_cpu_adr[19:16])
                 4'h0: begin							// class , valid_inference
@@ -160,8 +164,6 @@ module servant_syntzulu#(
                 acc_snn_valid_mp <= 1'b1;  
         end
 
-    reg [7:0] rd_address_output_buffer;
-
     Syntzulu #(
 		.ENCODING_BYPASS(ENCODING_BYPASS),
         .WIDTH(WIDTH),
@@ -173,13 +175,9 @@ module servant_syntzulu#(
         .WINDOW(WINDOW),
         .REF_PERIOD(REF_PERIOD),
         .DW(DW),
-            
-        .WIDTH(WIDTH),
+
         .N_CLASSES(N_CLASSES),
         .TIME_STEPS(TIME_STEPS),
-
-        .MAX_NEURONS(MAX_NEURONS),
-        .MAX_SYNAPSES(MAX_SYNAPSES),
 
         .LAYERS(LAYERS),
         .MAX_DECAY(MAX_DECAY),

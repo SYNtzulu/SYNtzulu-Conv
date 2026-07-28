@@ -67,6 +67,8 @@ always @(posedge i_wb_clk or posedge i_wb_rst) begin
         mm_spi_start <= 0;
         mm_mem_address <= 0;
         mm_read_size <= 0;
+        mm_spi_adr <= 0;
+        o_wb_spi_rdt <= 0;
     end
     else begin 
         case (spi_reg_sel)
@@ -144,9 +146,14 @@ assign spi_enable = mm_spi_start & ~mm_spi_start_d;
 wire reading_spi_valid_reg = i_wb_spi_cyc && ~i_wb_spi_we && (spi_reg_sel == `SPI_VALID_ADDR);
 
 
-reg valid_rst_cond = 0;
-always @(posedge i_wb_clk) 
-	valid_rst_cond <= mm_spi_valid && reading_spi_valid_reg;
+// ASIC: reset instead of an initial value. It gates the mm_spi_valid clear
+// below, so a random power-up value would put an X on the boot handshake.
+reg valid_rst_cond;
+always @(posedge i_wb_clk or posedge i_wb_rst)
+	if (i_wb_rst)
+		valid_rst_cond <= 1'b0;
+	else
+		valid_rst_cond <= mm_spi_valid && reading_spi_valid_reg;
 
 always @(posedge i_wb_clk or posedge i_wb_rst) begin
     if (i_wb_rst) begin
@@ -249,18 +256,22 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
 
     wire en_intmems;
     assign en_intmems = (en_intmem1 | en_intmem2 | en_intmem3 | en_intmem4 | en_inputbuffer | en_delta | en_instr)&spi_byte_valid_pulse;
-    wire rst_out_spi;
-    assign rst_out_spi = i_wb_rst | spi_enable;
-
+    // spi_enable e' decode combinatoria di flop: usarlo come reset ASINCRONO
+    // (il vecchio rst_out_spi = i_wb_rst | spi_enable) espone i registri a
+    // glitch sul pin di clear che la STA non puo' coprire. Qui e' un clear
+    // SINCRONO: spi_enable e' un impulso di 1 ciclo emesso molti cicli prima
+    // del primo byte SPI, quindi azzerare sul fronte successivo e' equivalente.
     reg [15:0] data_in_intmems;
     reg [14:0] address_mems; // The first LSB bit is used as valid data, the others 14 are reserved for the address
-    always @(posedge i_wb_clk or posedge rst_out_spi) begin
-        if (rst_out_spi) begin
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
+        if (i_wb_rst) begin
             address_mems <= 0;
-        end else if (spi_byte_valid_d) begin 
-            address_mems <= address_mems+1; 
+        end else if (spi_enable) begin
+            address_mems <= 0;
+        end else if (spi_byte_valid_d) begin
+            address_mems <= address_mems+1;
         end
-    end 
+    end
 
     // Path campioni (input buffer / encoding slot): assembla 2 byte SPI in una
     // parola da 16 bit hi-first, come word_intmem fa per pesi/delta/istruzioni.
@@ -271,8 +282,10 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     // alto e' scartato (encoding_slot_emg.data_in e' a 8 bit), quindi erano
     // indistinguibili in simulazione. Tenuta la versione a 16 bit: e' coerente
     // con la larghezza della porta e non limita i campioni a 8 bit.
-    always @(posedge i_wb_clk or posedge rst_out_spi) begin
-        if (rst_out_spi)
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
+        if (i_wb_rst)
+            data_in_intmems <= 16'h0000;
+        else if (spi_enable)
             data_in_intmems <= 16'h0000;
         else if (address_mems[0]&spi_byte_valid_d)
             data_in_intmems <= 16'h0000;
@@ -287,8 +300,10 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     // layout dei pesi in flash.txt (es. C7 15 -> 0xC715). Una sola scrittura, sul
     // secondo byte del pair. Il path campioni (input buffer) resta invariato sotto.
     reg [7:0] hi_byte_intmem;
-    always @(posedge i_wb_clk or posedge rst_out_spi) begin
-        if (rst_out_spi)
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
+        if (i_wb_rst)
+            hi_byte_intmem <= 8'h00;
+        else if (spi_enable)
             hi_byte_intmem <= 8'h00;
         else if (en_intmems & ~address_mems[0])   // primo byte del pair = byte alto
             hi_byte_intmem <= spi_rd_data;
@@ -322,8 +337,10 @@ assign o_wb_spi_ack = wb_ack; // Output the ack signal
     // byte (address_mems[1:0]==11), all'indirizzo di parola address_mems[11:2].
     wire en_ram_byte = en_ram & spi_byte_valid_pulse;
     reg [23:0] ram_acc;   // primi 3 byte del gruppo
-    always @(posedge i_wb_clk or posedge rst_out_spi) begin
-        if (rst_out_spi)
+    always @(posedge i_wb_clk or posedge i_wb_rst) begin
+        if (i_wb_rst)
+            ram_acc <= 24'b0;
+        else if (spi_enable)
             ram_acc <= 24'b0;
         else if (en_ram_byte & (address_mems[1:0] != 2'b11))
             ram_acc <= {ram_acc[15:0], spi_rd_data};

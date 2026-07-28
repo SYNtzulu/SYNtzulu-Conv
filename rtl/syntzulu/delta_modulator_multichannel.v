@@ -85,7 +85,11 @@ module delta_modulator_multichannel #(
 
   reg signed [WIDTH-1:0] prev_sample;    // next value to store
   reg signed [WIDTH-1:0] samples_d;
-  always @(posedge clk) samples_d <= samples;
+  always @(posedge clk or posedge rst)
+    if (rst)
+      samples_d <= 0;
+    else
+      samples_d <= samples;
 
   wire signed [WIDTH:0] cond_spike_neg = (data_old - delta);
   wire signed [WIDTH:0] cond_spike_pos = (data_old + delta);
@@ -110,12 +114,19 @@ module delta_modulator_multichannel #(
     end
   end
   
+  // ASIC: senza reset, en_dd (write-enable della delta mem) e valid (enable
+  // della catena SNN) partono a X/valore casuale al power-up.
   reg en_d, en_dd;
-  always @(posedge clk)
-		begin
+  always @(posedge clk or posedge rst)
+		if (rst) begin
+			en_d  <= 0;
+			en_dd <= 0;
+			valid <= 0;
+		end
+		else begin
 			en_d  <= en;
 			en_dd <= en_d;
-        	valid <= en_d;
+			valid <= en_d;
 		end
 
 ////////////////////////////

@@ -63,8 +63,10 @@ module servant_slow_timer
     end
 
     // Interrupt : re-evaluated at the slow rate
-    always @(posedge i_clk) begin
-        if (wr_en)
+    always @(posedge i_clk or posedge rst_a) begin
+        if (rst_a)
+            o_irq <= 1'b0;
+        else if (wr_en)
             o_irq <= 1'b0;
         else if (slow_tick)
             o_irq <= (mtimeslice >= mtimecmp);

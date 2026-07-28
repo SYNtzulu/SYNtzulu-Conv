@@ -28,7 +28,10 @@ module servant_extMem #(
     always @(posedge i_wb_clk or posedge i_wb_rst) begin
         if (i_wb_rst) begin
             wr_en <= 0; rd_en <= 0;
-        end 
+            wr_addr <= 0; rd_addr <= 0;
+            data_in <= 0;
+            o_cpu_rdt <= 0;
+        end
         else begin
             if (i_cpu_cyc&i_cpu_we) begin 
                 wr_addr <= i_cpu_adr[clogb2(DEPTH_MEM-1)+1: 2]; // Extract address bits
