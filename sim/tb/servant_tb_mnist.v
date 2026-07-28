@@ -22,7 +22,13 @@ module servant_tb;
    uart_decoder #(4000000) uart_decoder (q);
 
     wire wb_clk;
-    assign wb_clk = servant_sim_i.soc_i.servant.wb_clk; 
+`ifndef PSIM
+    assign wb_clk = servant_sim_i.soc_i.servant.wb_clk;
+`else
+    // post-synthesis: single clock domain, every flop of the netlist is
+    // clocked by i_clk_i (the internal net driven by the i_clk input pad).
+    assign wb_clk = servant_sim_i.soc_i.i_clk_i;
+`endif
 
    servant_sim
      #(.memfile  (memfile),
@@ -49,12 +55,16 @@ integer f_t_bin, f_out_bin;
 integer f_out_target, f_out, f_label;
 
 initial begin
+  // +nodump skips the waveform dump: on the post-synthesis netlist (>100k
+  // cells) the VCD is several GB and dominates the run time.
+  if (!$test$plusargs("nodump")) begin
 `ifndef PSIM
-  $dumpfile("tb_serv.vcd");
+    $dumpfile("tb_serv.vcd");
 `else
-  $dumpfile("ps_tb_serv.vcd");
+    $dumpfile("ps_tb_serv.vcd");
 `endif
-  $dumpvars(0,servant_tb);
+    $dumpvars(0,servant_tb);
+  end
 
   f_out_target = $fopen(TARGET_FILE,"r");
   f_out        = $fopen(OUTPUT_FILE_TARGET,"w");
@@ -75,8 +85,6 @@ initial begin
   $finish;
 end
 
-`ifndef PSIM
-
   // =========================
   //  SNN CURRENTS CHECK
   // =========================
@@ -92,6 +100,10 @@ end
   wire [31:0] label;
   wire pooling_enable;
 
+`ifndef PSIM
+  // ---------------------------------------------------------------------
+  //  RTL: normal hierarchical paths
+  // ---------------------------------------------------------------------
   assign pooling_enable = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.pooling_enable;
 
   assign valid_snn = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.en_shift[3];
@@ -100,6 +112,73 @@ end
 
   assign valid_label = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.output_buffer_wr_en;
   assign label = servant_sim_i.soc_i.servant.inst_servant_syntzulu.mosquito.output_buffer_din;
+`else
+  // ---------------------------------------------------------------------
+  //  POST-SYNTHESIS netlist (1_synth.v)
+  //
+  //  yosys flattens the design into the single module "soc" but keeps the
+  //  original names, turned into ESCAPED identifiers and bit-blasted:
+  //      \servant.inst_servant_syntzulu.mosquito. ... .comparator_in[15]
+  //  so every probe has to be bound one bit at a time (note the space that
+  //  closes each escaped identifier).
+  //
+  //  Only nets that SURVIVE synthesis can be probed, i.e. flop outputs.
+  //  Purely combinational nets are gone:
+  //    - pooling_enable  = (layer_type == 2'b10), and layer_type comes from
+  //      instr[79:78] -> rebuilt here from instruction_memory.instruction,
+  //      which is a register and is already marked (* keep *);
+  //    - output_buffer_wr_en / output_buffer_din (label log only) have no
+  //      equivalent register: label logging is disabled here.
+  //  p1/p2 (comparator_in) are flop outputs and keep their name, so the
+  //  inference check itself runs exactly as on RTL.
+  //
+  //  valid_snn: en_shift[3] survives only as the INSTANCE name of its flop
+  //  ("...en_shift[3]$_DFF_PP0_"); yosys merged the net it drives with
+  //  another one and kept the other name. To re-find it after a new
+  //  synthesis run, grep the netlist for that instance and read its .Q().
+  // ---------------------------------------------------------------------
+  assign pooling_enable =  servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.instruction_memory.instruction[79]  &&
+                          !servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.instruction_memory.instruction[78] ;
+
+  assign valid_snn = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.fifo_i.potential_mem.ena ;
+
+  assign valid_label = 1'b0;
+  assign label       = 32'b0;
+
+  assign p1[15] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[15] ;
+  assign p1[14] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[14] ;
+  assign p1[13] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[13] ;
+  assign p1[12] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[12] ;
+  assign p1[11] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[11] ;
+  assign p1[10] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[10] ;
+  assign p1[9]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[9] ;
+  assign p1[8]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[8] ;
+  assign p1[7]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[7] ;
+  assign p1[6]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[6] ;
+  assign p1[5]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[5] ;
+  assign p1[4]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[4] ;
+  assign p1[3]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[3] ;
+  assign p1[2]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[2] ;
+  assign p1[1]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[1] ;
+  assign p1[0]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l1_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[0] ;
+
+  assign p2[15] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[15] ;
+  assign p2[14] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[14] ;
+  assign p2[13] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[13] ;
+  assign p2[12] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[12] ;
+  assign p2[11] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[11] ;
+  assign p2[10] = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[10] ;
+  assign p2[9]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[9] ;
+  assign p2[8]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[8] ;
+  assign p2[7]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[7] ;
+  assign p2[6]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[6] ;
+  assign p2[5]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[5] ;
+  assign p2[4]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[4] ;
+  assign p2[3]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[3] ;
+  assign p2[2]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[2] ;
+  assign p2[1]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[1] ;
+  assign p2[0]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[0] ;
+`endif
 
   // target da file (due numeri per ciascun valid: p1 atteso e p2 atteso)
   integer signed target_p1;
@@ -181,7 +260,5 @@ end
 		end
 	end*/
 
-
-`endif
 
 endmodule
