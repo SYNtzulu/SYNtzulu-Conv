@@ -33,6 +33,14 @@
 //   (Functionally the banks are dual-port here - they are flops - so the
 //   read-first semantics hold in every case anyway.)
 //
+// RESET_MEM: the flat BRAM only looks initialized because of the `initial`
+// block that zeroes its array - simulation only, it does not exist in silicon.
+// The spike memory DOES depend on that zero: reading it back with an X/random
+// power-up content breaks the inference (the EMG run stops after ~3k valid
+// samples instead of 50k). RESET_MEM=1 clears the array from rst, which is what
+// the hardware needs. It costs no extra cells: the array already maps onto
+// sg13g2_dfrbp flops whose RESET_B pin was simply tied high.
+//
 // CONSTRAINTS: RAM_DEPTH and N_BANK must be powers of two and RAM_DEPTH must be
 // a multiple of N_BANK (checked in simulation).
 //////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +50,11 @@ module BRAM_banked_singlePort_readFirst #(
   parameter RAM_DEPTH       = 512,                // Specify RAM depth (number of entries)
   parameter RAM_PERFORMANCE = "HIGH_PERFORMANCE", // Select "HIGH_PERFORMANCE" or "LOW_LATENCY"
   parameter INIT_FILE       = "",                 // RAM initialization file (leave blank if not used)
-  parameter N_BANK          = 4                   // Number of banks (power of two, 1 = flat array)
+  parameter N_BANK          = 4,                  // Number of banks (power of two, 1 = flat array)
+  // 1 = the whole array is cleared by rst. Needed when the design reads
+  // locations it never wrote (see the note at the bottom of the file);
+  // 0 = array left untouched by rst, bit-exact with BRAM_singlePort_readFirst.
+  parameter RESET_MEM       = 0
 )
 (
   input  [clogb2(RAM_DEPTH-1)-1:0] addra,  // Port A address bus, width determined from RAM_DEPTH
@@ -113,9 +125,19 @@ module BRAM_banked_singlePort_readFirst #(
       end
 
       // write port: only the addressed bank sees the write enable
-      always @(posedge clk)
-        if (ena && wea && sel_wr)
-          ram[wword] <= dina;
+      if (RESET_MEM) begin: mem_with_reset
+        integer wr_index;
+        always @(posedge clk or posedge rst)
+          if (rst)
+            for (wr_index = 0; wr_index < BANK_DEPTH; wr_index = wr_index + 1)
+              ram[wr_index] <= {RAM_WIDTH{1'b0}};
+          else if (ena && wea && sel_wr)
+            ram[wword] <= dina;
+      end else begin: mem_no_reset
+        always @(posedge clk)
+          if (ena && wea && sel_wr)
+            ram[wword] <= dina;
+      end
 
       // read port: same read-first behaviour as the flat array (the write above
       // is non-blocking, so a same-address access returns the OLD value).
