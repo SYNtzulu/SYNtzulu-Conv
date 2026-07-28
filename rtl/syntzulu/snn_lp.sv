@@ -716,9 +716,13 @@ assign integrated_neuron = integrated_neuron_1; // integrated_neuron 1 and 2 are
 wire [clogb2(MAX_INPUT_FEATURE*MAX_INPUT_FEATURE)-1:0] NEURON_CONV;
 
 //neuron is the number of neurons in dense layers, neuron_conv is the number of neuron in each OF in conv layers;
-reg [7:0] neuron_limit = 0;
-always @(posedge clk) begin
-    neuron_limit <= dense_enable ? NEURON : NEURON_CONV;
+// ASIC: reset instead of an initial value
+reg [7:0] neuron_limit;
+always @(posedge clk or posedge rst) begin
+    if (rst)
+        neuron_limit <= 8'b0;
+    else
+        neuron_limit <= dense_enable ? NEURON : NEURON_CONV;
 end
 
 // used to only increments integrated_neurons_cnt during the last IF computation

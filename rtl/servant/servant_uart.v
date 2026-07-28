@@ -132,30 +132,37 @@ module servant_uart #(
     
 
 
-    always @(posedge i_wb_clk) begin
+    always @(posedge i_wb_clk or posedge wb_rst) begin
+		if (wb_rst) begin
+			o_cpu_rdt    <= 32'h0;
+			uart_data    <= 8'h00;
+			uart_hp      <= 1'b0;
+			uart_if_send <= 1'b0;
+		end else begin
 				case (i_cpu_adr[19:16])
-					4'h0: begin										
+					4'h0: begin
 						o_cpu_rdt <= {24'h0, uart_data};
 						if (i_cpu_cyc & i_cpu_we) begin
 							uart_data <= i_cpu_dat;
 						end
 					end
 					4'h1: begin
-						o_cpu_rdt <= {31'h0, uart_if_send};			
+						o_cpu_rdt <= {31'h0, uart_if_send};
 					end
 					4'h2: begin
-						o_cpu_rdt <= {31'h0, uart_if_ready};			
-					end 
-					4'h3: begin										
+						o_cpu_rdt <= {31'h0, uart_if_ready};
+					end
+					4'h3: begin
 						o_cpu_rdt <= {31'h0, uart_hp};
 						if (i_cpu_cyc & i_cpu_we) begin
 							uart_hp <= i_cpu_dat[0];
 						end
 					end
-          4'h4: o_cpu_rdt <= {24'h0, rx_latched};  
-          4'h5: o_cpu_rdt <= {31'h0, rx_flag};     
+          4'h4: o_cpu_rdt <= {24'h0, rx_latched};
+          4'h5: o_cpu_rdt <= {31'h0, rx_flag};
 				endcase
             uart_if_send <= uart_send_next;
+		end
     end
 `else
 
@@ -168,9 +175,12 @@ module servant_uart #(
     wire hp_tx_start;
     wire uart_if_ready;
 
+    // ASIC: no initial values, these are reset below. On silicon uart_hp /
+    // uart_data power up random, and a random uart_hp puts an X on the
+    // transmitter's iSend, which locks its FSM (cState) into X.
     reg  uart_if_send;
-    reg  uart_hp = 0;
-    reg  [7:0] uart_data = 8'h00;
+    reg  uart_hp;
+    reg  [7:0] uart_data;
     reg  uart_wren;
     reg  uart_send_next;
 
@@ -231,23 +241,30 @@ module servant_uart #(
     end
     assign o_cpu_ack = ack_int;
 
-    always @(posedge i_wb_clk) begin
-        case (i_cpu_adr[19:16])
-            4'h0: begin
-                o_cpu_rdt <= {24'h0, uart_data};
-                if (i_cpu_cyc & i_cpu_we)
-                    uart_data <= i_cpu_dat;
-            end
-            4'h1: o_cpu_rdt <= {31'h0, uart_if_send};
-            4'h2: o_cpu_rdt <= {31'h0, uart_if_ready};
-            4'h3: begin
-                o_cpu_rdt <= {31'h0, uart_hp};
-                if (i_cpu_cyc & i_cpu_we)
-                    uart_hp <= i_cpu_dat[0];
-            end
-            default: o_cpu_rdt <= 32'h0;
-        endcase
-        uart_if_send <= uart_send_next;
+    always @(posedge i_wb_clk or posedge wb_rst) begin
+        if (wb_rst) begin
+            o_cpu_rdt    <= 32'h0;
+            uart_data    <= 8'h00;
+            uart_hp      <= 1'b0;
+            uart_if_send <= 1'b0;
+        end else begin
+            case (i_cpu_adr[19:16])
+                4'h0: begin
+                    o_cpu_rdt <= {24'h0, uart_data};
+                    if (i_cpu_cyc & i_cpu_we)
+                        uart_data <= i_cpu_dat;
+                end
+                4'h1: o_cpu_rdt <= {31'h0, uart_if_send};
+                4'h2: o_cpu_rdt <= {31'h0, uart_if_ready};
+                4'h3: begin
+                    o_cpu_rdt <= {31'h0, uart_hp};
+                    if (i_cpu_cyc & i_cpu_we)
+                        uart_hp <= i_cpu_dat[0];
+                end
+                default: o_cpu_rdt <= 32'h0;
+            endcase
+            uart_if_send <= uart_send_next;
+        end
     end
 
 `endif

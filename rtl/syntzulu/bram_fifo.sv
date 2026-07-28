@@ -82,9 +82,13 @@ always @(posedge clk or posedge rst)
             wr_cnt <= 0;
 
 // to reset neuron potential
-reg reset_potential_d=0;
-always @(posedge clk)
-    reset_potential_d <= reset_potential;
+// ASIC: reset instead of an initial value, it selects the FIFO output below
+reg reset_potential_d;
+always @(posedge clk or posedge rst)
+    if (rst)
+        reset_potential_d <= 1'b0;
+    else
+        reset_potential_d <= reset_potential;
 assign DO = reset_potential_d ? {DATA_WIDTH{1'b0}} : fifo_out;
 
 wire [DATA_WIDTH-1:0] fifo_out;
