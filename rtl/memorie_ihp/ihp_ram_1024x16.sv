@@ -37,9 +37,15 @@ module ihp_ram_1024x16 #(
     // the read address otherwise.
     wire [9:0] a_addr = we ? waddr : raddr;
 
-    RM_IHPSG13_1P_1024x16_c2_bm_bist #(
+    // INIT_FILE esiste solo sul modello comportamentale (rtl/behavioural_ihp);
+    // in sintesi la macro e' una blackbox da liberty e non ha parametri.
+    RM_IHPSG13_1P_1024x16_c2_bm_bist
+`ifdef SIM
+    #(
         .INIT_FILE(INIT_FILE)
-    ) u_ram (
+    )
+`endif
+    u_ram (
         .A_CLK      (clk),
         .A_MEN      (we | re),
         .A_WEN      (we),
