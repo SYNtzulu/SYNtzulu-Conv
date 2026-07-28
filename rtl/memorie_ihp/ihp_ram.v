@@ -36,15 +36,16 @@ module ihp_ram # (
 );
 
 	wire wea = (|we);
-	reg [7:0] B1, B2, B3, B4;
 
-	//bitmask per-byte (1 = scrivi), stessa logica di prima
-	always @(posedge clk) begin
-	    if (we[0]) B1 = 8'hFF; else B1 = 8'h00;
-	    if (we[1]) B2 = 8'hFF; else B2 = 8'h00;
-	    if (we[2]) B3 = 8'hFF; else B3 = 8'h00;
-	    if (we[3]) B4 = 8'hFF; else B4 = 8'h00;
-	end
+	// bitmask per-byte (1 = scrivi): COMBINATORIA, cosi' e' allineata a
+	// we/eff_wen nello stesso ciclo. Prima era un blocco @(posedge clk): le
+	// maschere erano flop mentre A_WEN e' combinatorio, quindi sul primo
+	// fronte di ogni scrittura la macro usava la maschera della transazione
+	// precedente (in sim il blocking mascherava il problema con una race).
+	wire [7:0] B1 = we[0] ? 8'hFF : 8'h00;
+	wire [7:0] B2 = we[1] ? 8'hFF : 8'h00;
+	wire [7:0] B3 = we[2] ? 8'hFF : 8'h00;
+	wire [7:0] B4 = we[3] ? 8'hFF : 8'h00;
 
 	// mask a 16 bit per ciascun banco
 	wire [15:0] BM_lo = {B2, B1};   // bytes 1,0 -> [15:0]
@@ -62,7 +63,14 @@ module ihp_ram # (
 	assign dout = {32'b0, dout_hi, dout_lo};
 
 	// banco basso: bit [15:0]
-	RM_IHPSG13_1P_1024x16_c2_bm_bist #(.INIT_FILE(memfile_lo)) ram_lo (
+	// INIT_FILE esiste solo sul modello comportamentale (rtl/behavioural_ihp);
+	// in sintesi la macro e' una blackbox da liberty e non ha parametri, quindi
+	// l'override va omesso testualmente.
+	RM_IHPSG13_1P_1024x16_c2_bm_bist
+`ifdef SIM
+	#(.INIT_FILE(memfile_lo))
+`endif
+	ram_lo (
 	    .A_CLK(clk),
 	    .A_MEN(enb_debug),
 	    .A_WEN(eff_wen),
@@ -83,7 +91,11 @@ module ihp_ram # (
 	);
 
 	// banco alto: bit [31:16]
-	RM_IHPSG13_1P_1024x16_c2_bm_bist #(.INIT_FILE(memfile_hi)) ram_hi (
+	RM_IHPSG13_1P_1024x16_c2_bm_bist
+`ifdef SIM
+	#(.INIT_FILE(memfile_hi))
+`endif
+	ram_hi (
 	    .A_CLK(clk),
 	    .A_MEN(enb_debug),
 	    .A_WEN(eff_wen),
