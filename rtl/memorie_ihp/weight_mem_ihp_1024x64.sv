@@ -73,9 +73,15 @@ module weight_mem_ihp_1024x64 #(
     wire [9:0]  a_addr = wr_any ? wr_addr : rd_addr;
     wire [63:0] a_dout;
 
-    RM_IHPSG13_1P_1024x64_c2_bm_bist #(
+    // INIT_FILE esiste solo sul modello comportamentale (rtl/behavioural_ihp);
+    // in sintesi la macro e' una blackbox da liberty e non ha parametri.
+    RM_IHPSG13_1P_1024x64_c2_bm_bist
+`ifdef SIM
+    #(
         .INIT_FILE(INIT_FILE)
-    ) u_ram (
+    )
+`endif
+    u_ram (
         .A_CLK      (clk),
         .A_MEN      (1'b1),
         .A_WEN      (wr_any),
