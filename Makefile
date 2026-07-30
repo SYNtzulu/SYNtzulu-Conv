@@ -1,5 +1,16 @@
-filename = top
-pcf_file = rtl/icebreaker.pcf
+env:
+	cd ../ && source oss-cad-suite/environment
+
+simulate:
+	cd firmware && make -B
+	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
+	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
+	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/* std_cells/*
+	vvp rtl_sim
+	rm rtl_sim
+	mv tb_serv.vcd work/
+	gtkwave --save=work/serv_waves.gtkw work/tb_serv.vcd &
+
 
 # ------------------------------------------------------------------
 #  Setup del flow ASIC (OpenROAD / IHP SG13G2)
@@ -28,87 +39,8 @@ setup_orfs:
 	@echo "ok: paths.mk generato, symlink creato."
 	@echo "sintesi soc:  cd $(OPENROAD_PATH)/flow && make DESIGN_CONFIG=./designs/$(PLATFORM)/SYNtzulu-Conv/soc/config_soc.mk synth"
 
-env:
-	cd ../ && source oss-cad-suite/environment
+
 	
-netlist:
-	yosys -p 'read_blif -wideports output/$(filename).blif; write_verilog output/top_syn.v'
-	
-build:
-	cd firmware && make -B
-	yosys -p "synth_ice40 -abc9 -top soc -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/.log
-	nextpnr-ice40 --up5k --seed 20 --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v 
-	icepack output/$(filename).asc output/$(filename).bin -s
-	
-build_stat:
-	cd firmware && make -B
-	yosys -p "read_verilog -sv rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/*; \
-	          hierarchy -top soc; \
-	          synth_ice40 -top soc -dsp -abc9 -noflatten; \
-	          tee -o output/module_stats.txt stat" \
-	     -l output/yosys_stat.log
-
-# Lista di seed da testare (modifica liberamente)
-SEEDS = 1 2 3 4 5 6 7 8 9 10 37 42 99
-
-build_best:
-	cd firmware && make -B
-	@mkdir -p logs output/best
-	@rm -f output/best_freq.txt
-	yosys -p "synth_ice40 -abc9 -top soc -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-	@echo "Seed | Fmax (MHz)" > output/best_freq.txt
-	@for SEED in $$(seq 0 200); do \
-		echo ">>> Trying seed $$SEED..."; \
-		nextpnr-ice40 --up5k --package sg48 \
-			--json output/$(filename).json \
-			--pcf $(pcf_file) \
-			--asc output/best/$(filename)_seed$$SEED.asc \
-			--threads $$(nproc) \
-			--freq 24 \
-			--seed $$SEED --timing-allow-fail \
-			> logs/nextpnr_seed$$SEED.log 2>&1; \
-		FREQ=$$(grep -E "Max frequency for clock 'servant\.wb_clk'" logs/nextpnr_seed$$SEED.log | \
-			sed -E "s/.*: ([0-9]+\.[0-9]+) MHz.*/\1/" | tail -n 1); \
-		[ -z "$$FREQ" ] && FREQ=$$(grep -Eo "([0-9]+\.[0-9]+) MHz" logs/nextpnr_seed$$SEED.log | tail -n 1 | cut -d' ' -f1); \
-		[ -z "$$FREQ" ] && FREQ="0.00"; \
-		echo "Seed $$SEED => $$FREQ MHz"; \
-		echo "$$SEED | $$FREQ" >> output/best_freq.txt; \
-	done; \
-	tail -n +2 output/best_freq.txt | sort -nr -k2,2 -t'|' > output/best/best_seed.txt; \
-	BEST_SEED=$$(head -n1 output/best/best_seed.txt | cut -d '|' -f1 | tr -d ' '); \
-	cp output/best/$(filename)_seed$$BEST_SEED.asc output/$(filename).asc; \
-	echo "==> Best seed: $$BEST_SEED"; \
-	icepack output/$(filename).asc output/$(filename).bin -s
-
-build_no_flatten:
-	cd firmware && make -B
-	yosys -p "synth_ice40 -dsp -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -noflatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys_noflatt.log
-
-build_one:
-	cd firmware && make -B
-	yosys -p "synth_ice40 -abc9 -top stack_bram -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/syntzulu/stack_bram.sv rtl/syntzulu/BRAM_singlePort_readFirst.sv -l output/yosys.log
-	#nextpnr-ice40 --up5k --json output/$(filename).json --pcf $(pcf_file) --asc output/$(filename).asc -l output/nextpnr.log -v
-	#icepack output/$(filename).asc output/$(filename).bin -s
-
-build_cr:
-	cd firmware && make -B
-	yosys -p "synth_ice40 -dsp -abc9 -top service -json output/$(filename).json -blif output/$(filename).blif -flatten" rtl/define.v rtl/servant/* rtl/serv/* rtl/syntzulu/* -l output/yosys.log
-	nextpnr-ice40 --json output/$(filename).json --pcf $(pcf_file) --up5k --asc output/$(filename).asc --report timing_report.json
-	@ if [ $$? -ne 0 ]; then echo "WARNING: Timing violation, continuing anyway..."; fi
-	icepack output/$(filename).asc output/$(filename).bin -s
-
-prog:
-	sudo iceprog output/$(filename).bin
-	
-simulate:
-	cd firmware && make -B
-	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
-	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
-	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/* std_cells/*
-	vvp rtl_sim
-	rm rtl_sim
-	mv tb_serv.vcd work/
-	gtkwave --save=work/serv_waves.gtkw work/tb_serv.vcd &
 
 # Simulazione post-sintesi del soc: stessi testbench di "simulate", ma al posto
 # dell'RTL (servant/serv/syntzulu/memorie_ihp) si legge la netlist gate-level
@@ -128,6 +60,26 @@ simulate_post_syn:
 	rm post_syn_sim
 	mv ps_tb_serv.vcd work/
 	gtkwave --save=work/serv_waves.gtkw work/ps_tb_serv.vcd &
+
+# Simulazione post-layout del soc: identica a "simulate_post_syn", ma la netlist
+# e' quella finale scritta da ORFS dopo detailed route/fill (6_final.v), quindi
+# include anche tapcell/fill/antenna diode e i buffer di CTS.
+#   make simulate_post_layout
+#   make simulate_post_layout SOC_NETLIST_PL=<altra netlist>
+SOC_NETLIST_PL ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv/1/6_final.v
+
+simulate_post_layout:
+	cd firmware && make -B
+	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
+	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
+	iverilog -DFUNCTIONAL -DPSIM -o post_layout_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv $(SOC_NETLIST_PL) rtl/behavioural_ihp/* std_cells/*
+	vvp post_layout_sim
+	rm post_layout_sim
+	mv ps_tb_serv.vcd work/pl_tb_serv.vcd
+	gtkwave --save=work/serv_waves.gtkw work/pl_tb_serv.vcd &
+
+.PHONY: sim_post_layout
+sim_post_layout: simulate_post_layout
 
 listen:
 	sudo rm -f output/serial.txt || true
