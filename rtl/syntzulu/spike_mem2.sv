@@ -4,7 +4,12 @@ module spike_mem_2#(
     parameter MAX_NUMBER_OUTPUT_FEATURE = 32,
 	// number of banks the 512x16 spike memory is split into (power of two).
 	// 1 = single flat array, i.e. the old BRAM_singlePort_readFirst.
-    parameter SPIKE_MEM_BANKS = 4
+	// Only used when SPIKE_MEM_SRAM = 0.
+    parameter SPIKE_MEM_BANKS = 4,
+	// 1 = the spike mem is one RM_IHPSG13_2P_512x16 dual-port macro,
+	// 0 = the flop array (BRAM_banked_singlePort_readFirst). See the
+	// instantiation at the bottom of the file.
+    parameter SPIKE_MEM_SRAM = 1
 )(
     input clk,
     input rst,
@@ -335,6 +340,40 @@ module spike_mem_2#(
         end
     end
 
+	// SPIKE_MEM_SRAM = 1 -> one RM_IHPSG13_2P_512x16 dual-port macro (88 481 um2)
+	//                  0 -> the flop array, 8192 sg13g2_dfrbp_1 (386 480 um2)
+	// Both have the same port list, the same 1-clock latency and the same
+	// read-first behaviour, so the parameter can be flipped to compare area and
+	// power on the same netlist. The macro version needs no gating at start-up:
+	// it clears itself in the 512 clocks after rst and forces doutb to 0 while
+	// it does, which is the value those locations are being given anyway.
+    generate
+    if (SPIKE_MEM_SRAM) begin: spike_mem_sram
+
+    spike_mem_ihp_512x16
+    #(
+    .RAM_WIDTH(SPIKE_MEM_WIDTH),
+    .RAM_DEPTH(512),
+    .RAM_PERFORMANCE("LOW_LATENCY")
+    )
+    spike_mem
+    (
+    .addra({!lsb_layer_counter,spike_wr_addr   [MEM_DEPTH_BITS-1:0]}),
+    .addrb({lsb_layer_counter, spike_rd_addr_16[MEM_DEPTH_BITS-1:0]}),
+    .dina (spike_mem_in),
+    .clk  (clk),
+    .wea  (spike_wr_en | spike_wr_en_d),
+    .ena  (spike_wr_en | spike_wr_en_d),
+    .enb  (1'b1),
+    .rst(rst),
+    .regceb(1'b1),
+
+    .doutb(spike_mem_out_bram),
+    .mem_ready()
+    );
+
+    end else begin: spike_mem_flops
+
 	// 512x16 split into SPIKE_MEM_BANKS banks of 512/SPIKE_MEM_BANKS x 16.
 	// The bank is picked by the HIGH address bits, whose MSB is the layer
 	// ping-pong bit: write and read therefore always land in different banks.
@@ -351,19 +390,22 @@ module spike_mem_2#(
     )
     spike_mem
     (
-    .addra({!lsb_layer_counter,spike_wr_addr   [MEM_DEPTH_BITS-1:0]}),                  
-    .addrb({lsb_layer_counter, spike_rd_addr_16[MEM_DEPTH_BITS-1:0]}),               
-    .dina (spike_mem_in),                       
-    .clk  (clk),                     
-    .wea  (spike_wr_en | spike_wr_en_d),                     
-    .ena  (spike_wr_en | spike_wr_en_d),                     
-    .enb  (1'b1),                      
-    .rst(rst),                       
-    .regceb(1'b1),                   
-    
-    .doutb(spike_mem_out_bram)              
+    .addra({!lsb_layer_counter,spike_wr_addr   [MEM_DEPTH_BITS-1:0]}),
+    .addrb({lsb_layer_counter, spike_rd_addr_16[MEM_DEPTH_BITS-1:0]}),
+    .dina (spike_mem_in),
+    .clk  (clk),
+    .wea  (spike_wr_en | spike_wr_en_d),
+    .ena  (spike_wr_en | spike_wr_en_d),
+    .enb  (1'b1),
+    .rst(rst),
+    .regceb(1'b1),
+
+    .doutb(spike_mem_out_bram)
     );
-    
+
+    end
+    endgenerate
+
     // The following function calculates the address width based on specified RAM depth
 	function integer clogb2;
 	  input integer depth;

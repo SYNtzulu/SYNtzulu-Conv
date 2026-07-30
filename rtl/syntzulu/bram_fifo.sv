@@ -96,11 +96,15 @@ wire [DATA_WIDTH-1:0] fifo_out;
 
 //ihp_potential_mem
 //BRAM_singlePort_readFirst
-IHP3_singlePort_readFirst
+//IHP3_singlePort_readFirst   <- 6 x RM_IHPSG13_1P_256x64, single port: a write
+//                               and a read on the same bank lost the read, the
+//                               array only held 6144 of the DEPTH words, and a
+//                               64-bit row was activated to move 16 bits.
+potential_mem_ihp_8192x16
 #(
   .RAM_WIDTH(DATA_WIDTH),          // Specify RAM data width
   .RAM_DEPTH(DEPTH),               // Specify RAM depth (number of entries)
-  .RAM_PERFORMANCE("LOW_LATENCY"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
+  .RAM_PERFORMANCE("LOW_LATENCY"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY"
   .INIT_FILE("")                   // Specify name/location of RAM initialization file if using one (leave blank if not)
   )
 potential_mem
