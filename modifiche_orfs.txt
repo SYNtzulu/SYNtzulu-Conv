@@ -1,0 +1,179 @@
+================================================================================
+MODIFICHE .TCL AL FLUSSO ORFS - SYNtzulu-Conv
+================================================================================
+
+Obiettivo: le violazioni di slew (816 al global route in variante 1) non
+venivano riparate perche' repair_design - l'unico strumento che sa spezzare un
+net con dei buffer - aveva quel meccanismo disattivato in 2 dei 3 punti in cui
+gira. ORFS non passa mai -max_wire_length, e il default che OpenROAD si calcola
+da solo e' 23868 um su un die da 3230: nessun net si qualifica mai come lungo.
+
+
+--------------------------------------------------------------------------------
+FILE NUOVI  (tutti in orfs_setup/soc/, agganciati da config_soc.mk)
+--------------------------------------------------------------------------------
+
+pad_nets_dont_touch.tcl          hook: POST_FLOORPLAN_TCL
+    Marca do-not-touch i 15 net di confine fra pad e pin di chip.
+    Senza, la riparazione di hold del CTS infilava celle di ritardo DOPO il
+    pad (hold174/X -> o_flash_ss), lasciando una cella di core a pilotare da
+    sola i 4 pF esterni: slew 16 ns.
+    Deve stare qui e non nell'SDC perche' write_sdc non riemette
+    set_dont_touch, mentre il flag su ODB sopravvive fra gli stage.
+
+post_cts_repair.tcl              hook: POST_CTS_TCL
+    repair_design con -max_wire_length 600, seguito da detailed_placement e
+    check_placement.
+    La legalizzazione NON e' opzionale: senza, i buffer restano alle coordinate
+    ideali del resizer e il global route muore con un DRT-0073 per ciascuno.
+    Effetto misurato: 621 long wires, 1014 buffer inseriti.
+
+pre_global_route.tcl             hook: PRE_GLOBAL_ROUTE
+    Ridefinisce repair_design_helper aggiungendo -max_wire_length 1000.
+    E' il punto piu' importante: global_route.tcl:57 e' l'unica riparazione del
+    flusso che gira su parassite estratte dal routing reale, e li' inseriva
+    ZERO buffer (734 violazioni trovate, 107 celle ridimensionate).
+    1000 e non 600 perche' qui la lunghezza misurata e' quella instradata vera,
+    piu' lunga della stima di Steiner: la stessa soglia pescherebbe molti piu'
+    net, e ogni buffer inserito qui si paga in congestione al detailed route.
+
+repair_helpers.tcl               sourced da setRC.tcl
+    Stessa ridefinizione, valore da MAX_WIRE_LENGTH (600).
+    Serve a raggiungere scripts/resize.tcl, il terzo punto: e' l'unico che non
+    ha nessun hook, quindi si passa da setRC.tcl che load.tcl:34 sorge
+    all'inizio di ogni stage.
+    E' anche l'unico punto in cui l'inserimento di buffer avviene mentre il
+    placement puo' ancora cambiare.
+
+
+--------------------------------------------------------------------------------
+FILE GIA' ESISTENTI CHE ABBIAMO MODIFICATO
+--------------------------------------------------------------------------------
+
+platforms/ihp-sg13g2/setRC.tcl   (file di piattaforma, upstream ORFS)
+    Aggiunti in fondo due blocchi, entrambi dentro un guard "if variabile
+    definita", quindi inerti per ogni altro design su questa piattaforma.
+
+    1) SIGNAL_WIRE_RC_LAYER  -> sovrascrive set_wire_rc -signal, qui a Metal3.
+       Il default Metal2 non e' una costante fisica: l'intestazione del file
+       dice che i valori vengono da correlateRC.py tarato su gcd, ibex, aes,
+       jpeg, riscv32i - tutti design standard-cell. Non regge su un floorplan
+       all'86% macro, dove i net deviano intorno ai blocchi e salgono di layer.
+       Misurato qui: il filo instradato e' 44% Metal2, 38% Metal3, 17% Metal4,
+       media pesata 0.117 fF/um contro gli 0.0181 che Metal2 implica.
+       La stima pre-routing era 6.4 volte ottimista, prima ancora di contare la
+       lunghezza in piu' delle deviazioni. E' il motivo per cui a CTS il design
+       sembrava pulito e al global route saltavano fuori 816 violazioni.
+
+    2) REPAIR_HELPERS_TCL    -> sorge repair_helpers.tcl (vedi sopra).
+
+
+--------------------------------------------------------------------------------
+DOVE AGISCE ADESSO max_wire_length
+--------------------------------------------------------------------------------
+
+    3_4_place_resized   600     repair_helpers.tcl via setRC.tcl
+    4_1_cts             600     post_cts_repair.tcl
+    5_1_grt            1000     pre_global_route.tcl
+
+Prima: 23868 ovunque tranne il CTS, cioe' mai attivo dove i numeri erano giusti.
+
+
+--------------------------------------------------------------------------------
+NON .TCL, PER COMPLETEZZA
+--------------------------------------------------------------------------------
+
+soc/config_soc.mk        aggancio dei 4 hook; FLOW_VARIANT; SLEW_MARGIN e
+                         CAP_MARGIN a 20 (sono PERCENTUALI: il vecchio
+                         CAP_MARGIN = 0.1 valeva 0.1%, cioe' nulla);
+                         PLACE_DENSITY 0.75 -> 0.60.
+soc/constraint_soc.sdc   vincoli di I/O sui pad (prima STA assumeva slew 0 ns e
+                         carico 0 pF: i path di I/O non erano analizzati);
+                         clock generato per la SPI flash; set_max_fanout
+                         commentato perche' l'SDC puo' solo stringere e la
+                         libreria impone gia' 8; set_max_delay disattivato.
+soc/placement_soc.cfg    22 origini macro snappate a multipli di 3.36 um
+                         (= 0.42 x 8 = 0.48 x 7), per allineare i pin alle
+                         track di Metal2 e Metal3. Poi tutti i canali
+                         allargati circa 3x quando il die e' cresciuto:
+                             colonne griglia 4x4   47.63 -> 131.63
+                             righe griglia 4x4     95.11 -> 152.23
+                             banda alta            45.44 -> 129.44
+                             griglia -> banda      58.15 -> 152.23
+                             banda -> outbuf       63.38 -> 120.50
+                         Il canale da 45.44 fra ram_lo e ram_hi era l'unica
+                         causa del fallimento GRT-0116: ogni riga di
+                         congestion.rpt stava li' dentro.
+
+soc/config_soc.mk        DIE_AREA 3230 -> 3570, CORE_AREA 2660 -> 3000.
+  (area)                 +22% di silicio, preso apposta per chiudere il
+                         flusso senza barattare routability contro tutto il
+                         resto. E' MARCATO NEL FILE COME DA RESTITUIRE: una
+                         volta chiuso, si stringe un canale alla volta
+                         guardando congestion.rpt.
+platforms/.../lib/
+  RM_IHPSG13_1P_*.lib    30 file, fix unita' di max_capacitance: "6.4e-14"
+                         (farad) -> 0.064 (pF, come gia' fanno le 2P).
+                         Committato a parte, f8edb655.
+
+
+--------------------------------------------------------------------------------
+RISULTATO  (variante 1 = baseline, variante 3 = questa)
+--------------------------------------------------------------------------------
+
+Metriche a 6_report, cioe' su estrazione RCX vera (final_report.tcl non chiama
+mai estimate_parasitics: usa extract_parasitics + read_spef, quindi il numero
+NON e' influenzato dalla scelta di Metal3, che agisce solo sulle stime a monte).
+
+                              v1          v3
+    slew violations          939         121      -87 %
+    cap violations           433           0
+    fanout violations        366         359      invariato, vedi sotto
+    setup WS             25.40 ns    27.75 ns
+    hold WS              0.031 ns    0.126 ns     4x, ora sopra il margine
+    setup / hold viol        0/0         0/0
+    DRC finali                 0           0
+    potenza              12.378 mW   12.380 mW    invariata
+    diodi antenna          22668        8167      -64 %
+    antenna net viol         411         387
+    detailed route         49:57       14:46      3.4x piu' veloce
+
+Le 121 rimaste sono tutte marginali: al global route la peggiore era 0.82 ns
+contro un limite di 0.48. Sparite le code catastrofiche (in v2 una arrivava a
+19 ns), quindi la liberty non viene piu' estrapolata fuori dal range di
+caratterizzazione e i numeri di timing sono finalmente attendibili.
+
+Il crollo dei diodi non era un obiettivo: net piu' corti e meglio bufferizzati
+generano meno violazioni antenna di rimbalzo.
+
+FANOUT - misurato, non stimato. Rimuovendo gli 8167 diodi dal netlist finale il
+conteggio passa da 359 a 2. Quindi 357 delle 359 violazioni esistono solo
+perche' repair_antennas appende diodi ai net DOPO che il resizer ha finito, e
+bastano 9 diodi su un net per sforare il default_max_fanout : 8 della libreria.
+I 2 residui sono violatori veri: _49993_ e _55064_, due sg13g2_inv_1 che
+pilotano 16 pin di macro ciascuno.
+
+Nota sul perche' il conteggio non e' sceso pur avendo il 64% di diodi in meno:
+in v1 erano ammucchiati (max 392 su un solo net), in v3 sono spalmati (max 60).
+Con un terzo dei diodi si tocca quasi lo stesso numero di net. La distribuzione
+e' molto piu' sana ma la metrica non lo vede.
+
+
+--------------------------------------------------------------------------------
+AVVERTENZE
+--------------------------------------------------------------------------------
+
+- repair_helpers.tcl e pre_global_route.tcl sono COPIE della proc
+  repair_design_helper di scripts/util.tcl:42. Se ORFS cambia quella proc, le
+  copie diventano obsolete in silenzio. Confrontarle a ogni aggiornamento.
+
+- Il passaggio a Metal3 e' la modifica piu' invasiva: il resizer trovera' molte
+  piu' violazioni gia' a 3_4 e inserira' molti piu' buffer prima del placement
+  finale. Se global placement o detailed route si lamentano di densita', la
+  prima leva da mollare e' questa, non il max_wire_length.
+
+- Resta aperto e non affrontato: le antenne. 11964 diodi inseriti al global
+  route in variante 2 (erano 22668 in variante 1) e 617 violazioni di net
+  ancora presenti, con la riparazione post-DRT disabilitata dalla piattaforma
+  (SKIP_ANTENNA_REPAIR_POST_DRT = 1). Vengono inseriti dopo ogni ottimizzazione
+  e nessuno ricontrolla il timing dopo.
