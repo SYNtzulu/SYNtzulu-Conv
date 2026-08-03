@@ -4,7 +4,7 @@
 // NON modificare a mano: rigenerare dopo ogni build del firmware.
 //
 // Mappata a ROM_BASE = 0x8000_0000 (RESET_PC). Carica il firmware dalla flash
-// SPI (@0x121000, 408 word) nella RAM CPU (target SPI ID 7), poi salta a RAM[0].
+// SPI (@0x121000, 446 word) nella RAM CPU (target SPI ID 7), poi salta a RAM[0].
 //////////////////////////////////////////////////////////////////////////////
 module rom_boot
   (input  wire        i_wb_clk,
@@ -31,7 +31,7 @@ module rom_boot
        8'd5:    o_wb_rdt <= 32'h0062A023;
        8'd6:    o_wb_rdt <= 32'hA00202B7;
        8'd7:    o_wb_rdt <= 32'h00003337;
-       8'd8:    o_wb_rdt <= 32'h30030313;
+       8'd8:    o_wb_rdt <= 32'h7C030313;
        8'd9:    o_wb_rdt <= 32'h0062A023;
        8'd10:   o_wb_rdt <= 32'hA00302B7;
        8'd11:   o_wb_rdt <= 32'h00100313;

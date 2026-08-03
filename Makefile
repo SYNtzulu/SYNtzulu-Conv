@@ -1,12 +1,23 @@
 env:
 	cd ../ && source oss-cad-suite/environment
 
+# Plusarg da passare a vvp. Quelli che capisce il tb:
+#   +nodump              niente VCD (obbligatorio sulle netlist, il dump e' GB)
+#   +gatedump            VCD ridotto ai segnali del clock gating (clkgen + top)
+#   +runtime_ns=N        durata simulata dopo il rilascio dei bottoni (dflt 9 ms)
+#   +window=N            quale occorrenza di idle/inferenza va nel riepilogo
+#
+# Per le finestre di potenza servono piu' di 9 ms: il caricamento di pesi e
+# istruzioni via SPI si prende da solo i primi ~6.3 ms.
+#   make simulate SIMFLAGS="+runtime_ns=25000000"
+SIMFLAGS ?=
+
 simulate:
 	cd firmware && make -B
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
-	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/* std_cells/*
-	vvp rtl_sim
+	iverilog -DFUNCTIONAL -DOPENROAD_CLKGATE -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/* std_cells/*
+	vvp rtl_sim $(SIMFLAGS)
 	rm rtl_sim
 	mv tb_serv.vcd work/
 	gtkwave --save=work/serv_waves.gtkw work/tb_serv.vcd &
@@ -72,7 +83,7 @@ simulate_post_layout:
 	cd firmware && make -B
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
-	iverilog -DFUNCTIONAL -DPSIM -o post_layout_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv $(SOC_NETLIST_PL) rtl/behavioural_ihp/* std_cells/*
+	iverilog -DFUNCTIONAL -DPSIM -o post_layout_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv sim/tb/nettype_wire.v $(SOC_NETLIST_PL) rtl/behavioural_ihp/* std_cells/*
 	vvp post_layout_sim
 	rm post_layout_sim
 	mv ps_tb_serv.vcd work/pl_tb_serv.vcd

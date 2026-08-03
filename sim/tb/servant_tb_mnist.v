@@ -47,12 +47,14 @@ parameter LABEL_FILE_OUTPUT   = {"sim/results/",`PATH,"/label.txt"};
 parameter TARGET_FILE          = {"sim/target/",`PATH,"/snn_inference.txt"};
 parameter TARGET_FILE_BINNING= {"sim/target/",`PATH,"/spike_vec.txt"};
 parameter OUTPUT_FILE_BINNING = {"sim/results/",`PATH,"/spike_vec.txt"};
+parameter POWER_WINDOW_FILE   = {"sim/results/",`PATH,"/power_windows.txt"};
 
 parameter MAX_ERRORS = 2;
 
 integer i,j,k;
 integer f_t_bin, f_out_bin;
 integer f_out_target, f_out, f_label;
+integer runtime_ns = 9000000;
 
 initial begin
   // +nodump skips the waveform dump: on the post-synthesis netlist (>100k
@@ -63,23 +65,47 @@ initial begin
 `else
     $dumpfile("ps_tb_serv.vcd");
 `endif
-    $dumpvars(0,servant_tb);
+    // +gatedump : dump ridotto per guardare il clock gating. Il dump completo
+    // su una simulazione lunga abbastanza da contenere piu' cicli di sleep
+    // produce un VCD da GB e domina il tempo di esecuzione. Qui si prendono
+    // solo i segnali del solo livello top del tb (i_clk, wb_clk, clk_en_probe,
+    // class_valid_probe, valid_snn, p1, p2) piu' l'intero clkgen, che e' dove
+    // stanno clk_en, gate_arm, gate_pend, gate_cnt, irq_sync e slow_tick.
+    if ($test$plusargs("gatedump")) begin
+      $dumpvars(0,servant_tb);
+`ifndef PSIM
+      $dumpvars(0,servant_sim_i.soc_i.servant.clkgen);
+`endif
+    end else begin
+      $dumpvars(0,servant_tb);
+    end
   end
 
   f_out_target = $fopen(TARGET_FILE,"r");
   f_out        = $fopen(OUTPUT_FILE_TARGET,"w");
   f_label       = $fopen(LABEL_FILE_OUTPUT,"w");
 
+  // quale occorrenza di idle/inferenza finisce nel riepilogo: +window=N
+  dummy = $value$plusargs("window=%d", window_sel);
+
+  // Durata simulata. Il default resta quello storico (9 ms), ma per le
+  // finestre di potenza serve di piu': il solo caricamento di pesi e
+  // istruzioni via SPI occupa i primi ~6.3 ms, e un ciclo campione+inferenza
+  // ne vale altri ~2. Con +runtime_ns=25000000 si vedono 4-5 cicli completi.
+  dummy = $value$plusargs("runtime_ns=%d", runtime_ns);
+
   #20000
   buttons = 0;
-  #9000000;
-  
+  #runtime_ns;
+
   //#2000000000;
 
   $fclose(f_out);
   $fclose(f_out_target);
   $fclose(f_out_bin);
   $fclose(f_t_bin);
+
+  report_power_windows;
 
   //$display("#[VERIFICATE #%0d  CORRENTI\nERRORI TOTALI: #%0d]", sample_idx, errors_snn_inference);
   $finish;
@@ -180,6 +206,134 @@ end
   assign p2[0]  = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.mosquito.snn_lp_i.layer_lp_l2_i.neuron_lp_i.Voltage_i.integrator_i.comparator_in[0] ;
 `endif
 
+  // ==========================================================================
+  //  FINESTRE DI POTENZA : start_idle / end_idle / start_inference / end_inference
+  //
+  //  Servono due intervalli disgiunti su cui stimare la potenza:
+  //
+  //    IDLE       il clock gating e' attivo, clk_en = 0 in clk_gen_wb, quindi
+  //               wb_clk e' fermo e commuta solo la logica sull'always-on i_clk
+  //               (sincronizzatore di reset, prescaler, timer).
+  //    INFERENCE  la rete sta macinando un campione: dal primo colpo di
+  //               valid_snn fino a quando acc_snn_valid_mp segnala la classe
+  //               pronta (e' il bit che il firmware polla su SYNTZULU_CLASS).
+  //
+  //  Il campionamento e' su i_clk, non su wb_clk: durante l'idle wb_clk e'
+  //  fermo per definizione e un always @(posedge wb_clk) non vedrebbe mai la
+  //  fine della finestra.
+  //
+  //  Entrambe le sonde sopravvivono alla sintesi (sono uscite di flop), quindi
+  //  i path valgono anche in PSIM, li' come identificatori escaped.
+  // ==========================================================================
+  wire clk_en_probe;      // 1 = clock libero, 0 = gating attivo
+  wire class_valid_probe; // classe pronta -> fine inferenza
+
+`ifndef PSIM
+  assign clk_en_probe      = servant_sim_i.soc_i.servant.clkgen.clk_en;
+  assign class_valid_probe = servant_sim_i.soc_i.servant.inst_servant_syntzulu.acc_snn_valid_mp;
+`else
+  assign clk_en_probe      = servant_sim_i.soc_i.\servant.clkgen.clk_en ;
+  assign class_valid_probe = servant_sim_i.soc_i.\servant.inst_servant_syntzulu.acc_snn_valid_mp ;
+`endif
+
+  // Quale occorrenza riportare nel riepilogo finale. La prima finestra dopo il
+  // boot comprende il caricamento di pesi/istruzioni via SPI e non e'
+  // rappresentativa, quindi il default e' la seconda.
+  integer window_sel = 2;
+
+  integer f_win;
+  integer idle_n  = 0;
+  integer infer_n = 0;
+
+  real start_idle      = -1.0;
+  real end_idle        = -1.0;
+  real start_inference = -1.0;
+  real end_inference   = -1.0;
+
+  real    t_idle_open;
+  real    t_infer_open;
+  reg     idle_open  = 1'b0;
+  reg     infer_open = 1'b0;
+
+  reg clk_en_q      = 1'b1;
+  reg valid_snn_q   = 1'b0;
+  reg class_valid_q = 1'b0;
+
+  always @(posedge i_clk) begin
+    clk_en_q      <= clk_en_probe;
+    valid_snn_q   <= valid_snn;
+    class_valid_q <= class_valid_probe;
+
+    // ---- finestra di IDLE : delimitata dai fronti di clk_en ----
+    if (clk_en_q === 1'b1 && clk_en_probe === 1'b0) begin
+      t_idle_open <= $realtime;
+      idle_open   <= 1'b1;
+      $display("#[GATE ON   t=%0.3f ns  clock fermo]", $realtime);
+    end
+    if (clk_en_q === 1'b0 && clk_en_probe === 1'b1 && idle_open) begin
+      idle_open <= 1'b0;
+      idle_n     = idle_n + 1;
+      $display("#[IDLE      #%0d  start=%0.3f ns  end=%0.3f ns  dur=%0.3f ns]",
+               idle_n, t_idle_open, $realtime, $realtime - t_idle_open);
+      if (idle_n == window_sel) begin
+        start_idle = t_idle_open;
+        end_idle   = $realtime;
+      end
+    end
+
+    // ---- finestra di INFERENZA : primo valid_snn -> classe pronta ----
+    if (!infer_open && valid_snn === 1'b1 && valid_snn_q === 1'b0) begin
+      t_infer_open <= $realtime;
+      infer_open   <= 1'b1;
+    end
+    if (infer_open && class_valid_probe === 1'b1 && class_valid_q === 1'b0) begin
+      infer_open <= 1'b0;
+      infer_n     = infer_n + 1;
+      $display("#[INFERENCE #%0d  start=%0.3f ns  end=%0.3f ns  dur=%0.3f ns]",
+               infer_n, t_infer_open, $realtime, $realtime - t_infer_open);
+      if (infer_n == window_sel) begin
+        start_inference = t_infer_open;
+        end_inference   = $realtime;
+      end
+    end
+  end
+
+  task report_power_windows;
+    begin
+      $display("");
+      $display("=== FINESTRE DI POTENZA (occorrenza #%0d) ===", window_sel);
+      // Una finestra ancora aperta a fine simulazione non e' un errore: vuol
+      // dire solo che il tempo simulato e' finito prima della sveglia. Va
+      // detto, altrimenti "0 finestre" si legge come "il gating non entra".
+      if (idle_open)
+        $display("nota: gating entrato a %0.3f ns e ancora attivo a fine simulazione (allunga con +runtime_ns=N per vedere la sveglia)", t_idle_open);
+      if (infer_open)
+        $display("nota: inferenza iniziata a %0.3f ns e non ancora conclusa a fine simulazione",
+                 t_infer_open);
+      if (start_idle < 0.0)
+        $display("start_idle      = n/d   (finestre di idle viste: %0d - il gating non e' mai entrato?)", idle_n);
+      else begin
+        $display("start_idle      = %0.3f ns", start_idle);
+        $display("end_idle        = %0.3f ns", end_idle);
+      end
+      if (start_inference < 0.0)
+        $display("start_inference = n/d   (inferenze complete viste: %0d)", infer_n);
+      else begin
+        $display("start_inference = %0.3f ns", start_inference);
+        $display("end_inference   = %0.3f ns", end_inference);
+      end
+
+      f_win = $fopen(POWER_WINDOW_FILE, "w");
+      if (f_win) begin
+        $fwrite(f_win, "start_idle      %0.3f\n", start_idle);
+        $fwrite(f_win, "end_idle        %0.3f\n", end_idle);
+        $fwrite(f_win, "start_inference %0.3f\n", start_inference);
+        $fwrite(f_win, "end_inference   %0.3f\n", end_inference);
+        $fclose(f_win);
+      end
+    end
+  endtask
+
   // target da file (due numeri per ciascun valid: p1 atteso e p2 atteso)
   integer signed target_p1;
   integer signed target_p2;
@@ -220,6 +374,7 @@ end
 
       if (errors_snn_inference > MAX_ERRORS) begin
         $display("Troppi errori (%0d). Stop.", errors_snn_inference);
+        report_power_windows;
         $finish;
       end
     end

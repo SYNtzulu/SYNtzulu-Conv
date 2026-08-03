@@ -11,7 +11,15 @@
 #define SPI_MEM_OUT_DELTA   (6u)     // servant_spi: 3'b110 -> delta mem
 #define SPI_MEM_OUT_INSTR   (4u)     // servant_spi: 3'b100 -> instruction mem
 
-static void irq_entry(void) __attribute__((naked));
+/*
+ * ISR del timer.
+ *
+ * Era __attribute__((naked)): niente salvataggio dei registri e soprattutto
+ * niente mret, quindi mstatus.MIE restava a 0 dopo il primo trap e nessuna
+ * interruzione successiva arrivava piu'. Con "interrupt" il compilatore emette
+ * prologo/epilogo e la mret, e le sveglie tornano periodiche.
+ */
+static void irq_entry(void) __attribute__((interrupt("machine")));
 
 static void spi_load_to_mem(uint32_t flash_addr, uint32_t which_mem, uint32_t nbytes);
 static void spi_load_sample(uint32_t flash_addr, uint32_t nbits);
@@ -83,9 +91,19 @@ int main(void)
     set_csr(mie, MIE_MTI_BIT_MASK);
     set_csr(mstatus, MSTATUS_MIE_BIT_MASK);
 
+    /*
+     * IDLE LOOP. Il gate si arma QUI, non dentro la ISR: armarlo prima della
+     * mret significava fermare il clock con mstatus.MIE ancora a 0 e la ISR a
+     * meta'. Qui invece il contesto e' gia' stato ripristinato, quindi il core
+     * si ferma in un punto pulito e riparte da qui alla sveglia.
+     *
+     * La scrittura si ripete a ogni giro: dopo il risveglio la ISR gira,
+     * torna qui e riarma. La wfi su SERV non e' implementata come stallo, ma
+     * il clock lo ferma comunque clk_gen_wb.
+     */
     while (1) {
-        // polling leggero e reattivo
-        //check_and_load_next_instr();
+        DEV_WRITE(CLOCK_GATE_CTRL, 1);
+        asm volatile("wfi");
     }
 }
 
@@ -96,8 +114,14 @@ static void irq_entry(void)
     sample_addr += CHANNELS;
 
     send_inference();
-    DEV_WRITE(CLOCK_GATE_CTRL, 1);
-    asm volatile("wfi");
+
+    /*
+     * Riarmo del timer: la scrittura su mtimecmp e' l'unica cosa che rimette
+     * o_irq a 0 (servant_slow_timer.v, ramo wr_en) e riazzera mtime. Senza,
+     * o_irq resta alta per due slow_tick e alla mret il core rientrerebbe
+     * subito nella ISR servendo due volte lo stesso campione.
+     */
+    mtimer_set_raw_time_cmp(TIME);
 }
 
 /* === SPI helpers === */

@@ -1,6 +1,20 @@
 #define WEIGHT_DEPTH 768
 #define CHANNELS 256
-#define TIME 0
+/*
+ * Periodo del timer di sistema, in tick del prescaler di clk_gen_wb
+ * (SLOW_DIV = 2400 a 24 MHz -> un tick ogni 100 us). Dal riarmo alla
+ * successiva o_irq passano circa (TIME+1) tick, quindi 20 -> ~2.1 ms.
+ *
+ * NON PUO' ESSERE 0. servant_slow_timer.v:72 fa "o_irq <= (mtimeslice >=
+ * mtimecmp)": con mtimecmp = 0 il confronto unsigned e' sempre vero, o_irq
+ * resta alta per sempre e clk_gen_wb non arriva mai ad abbassare clk_en.
+ * Era questa la ragione per cui il clock gating non entrava mai.
+ *
+ * Il limite inferiore e' il tempo di una ISR (caricamento SPI del campione +
+ * inferenza + UART): sotto quello il core non fa in tempo a tornare in idle e
+ * la finestra di gating sparisce.
+ */
+#define TIME 20
 #define SAMPLE_ADDR 1048576
 
 // Pesi in flash, contigui dopo i campioni (500*256 = 128000 byte).
