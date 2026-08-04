@@ -56,16 +56,63 @@ setup_orfs:
 
 	
 
+# ------------------------------------------------------------------
+#  VARIANTE DEL FLOW ORFS - nessun default, di proposito.
+#
+#  Le netlist qui sotto vivono in .../SYNtzulu_Conv/<VARIANT>/, e VARIANT va
+#  scelta a mano ogni volta. Un default e' esattamente la trappola in cui si
+#  cade: simulare la netlist di una variante vecchia non da' nessun errore,
+#  parte e produce risultati sbagliati. E' gia' successo con un default che
+#  puntava alla variante 1, sintetizzata sei giorni prima del firmware con cui
+#  la si stava simulando: la UART sputava X e la causa non era evidente.
+#
+#      make simulate_post_syn    VARIANT=5
+#      make simulate_post_layout VARIANT=5
+#      make genus_power          VARIANT=5
+#
+#  Chi vuole una netlist fuori da ORFS scavalca il path completo e VARIANT non
+#  serve:
+#      make simulate_post_syn SOC_NETLIST=<path>
+# ------------------------------------------------------------------
+ORFS_RESULTS ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv
+VARIANT      ?=
+
+# Ferma il target se VARIANT non e' stata data o se la netlist non esiste.
+# $(1) e' la netlist attesa. Il controllo sta nella ricetta e non nel corpo del
+# Makefile: un $(error) a livello di parsing farebbe fallire ANCHE i target che
+# con la variante non c'entrano niente, "simulate" per primo.
+define require_variant
+	@if [ -z "$(VARIANT)" ]; then \
+	  echo ""; \
+	  echo "ERRORE: VARIANT non impostata - va scelta a mano, non c'e' un default."; \
+	  echo ""; \
+	  echo "    make $@ VARIANT=<n>"; \
+	  echo ""; \
+	  echo "  varianti disponibili in $(ORFS_RESULTS):"; \
+	  ls -1 $(ORFS_RESULTS) 2>/dev/null | sed 's/^/      /' || echo "      (nessuna)"; \
+	  echo ""; \
+	  exit 1; \
+	fi
+	@if [ ! -f "$(1)" ]; then \
+	  echo ""; \
+	  echo "ERRORE: $(1) non esiste."; \
+	  echo "  La variante $(VARIANT) non e' arrivata a questo stadio del flow."; \
+	  echo ""; \
+	  exit 1; \
+	fi
+endef
+
 # Simulazione post-sintesi del soc: stessi testbench di "simulate", ma al posto
 # dell'RTL (servant/serv/syntzulu/memorie_ihp) si legge la netlist gate-level
 # prodotta da ORFS. Servono ancora: define.v (define EMG/CONFIG_PATH usati dai
 # tb), i modelli comportamentali delle macro RAM (nella netlist sono blackbox)
 # e le std cell / IO IHP.
-#   make simulate_post_syn
+#   make simulate_post_syn VARIANT=<n>
 #   make simulate_post_syn SOC_NETLIST=<altra netlist>
-SOC_NETLIST ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv/5/1_synth.v
+SOC_NETLIST ?= $(ORFS_RESULTS)/$(VARIANT)/1_synth.v
 
 simulate_post_syn:
+	$(call require_variant,$(SOC_NETLIST))
 	cd firmware && make -B
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
@@ -78,11 +125,12 @@ simulate_post_syn:
 # Simulazione post-layout del soc: identica a "simulate_post_syn", ma la netlist
 # e' quella finale scritta da ORFS dopo detailed route/fill (6_final.v), quindi
 # include anche tapcell/fill/antenna diode e i buffer di CTS.
-#   make simulate_post_layout
+#   make simulate_post_layout VARIANT=<n>
 #   make simulate_post_layout SOC_NETLIST_PL=<altra netlist>
-SOC_NETLIST_PL ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv/5/6_final.v
+SOC_NETLIST_PL ?= $(ORFS_RESULTS)/$(VARIANT)/6_final.v
 
 simulate_post_layout:
+	$(call require_variant,$(SOC_NETLIST_PL))
 	cd firmware && make -B
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
@@ -99,9 +147,9 @@ sim_post_layout: simulate_post_layout
 # ------------------------------------------------------------------
 #  Pacchetto per la stima di potenza con Genus
 #
-#      make genus_power
+#      make genus_power VARIANT=5
 #      make genus_power VARIANT=3 CORNER=slow
-#      make genus_power GENUS_ARGS=--no-zip
+#      make genus_power VARIANT=5 GENUS_ARGS=--no-zip
 #
 #  Mette in work/genus_power_<app>_v<variante>.zip due script Genus (una
 #  finestra di idle e una di inferenza), la netlist post-layout con .sdc e
@@ -113,12 +161,12 @@ sim_post_layout: simulate_post_layout
 #
 #  Il VCD pesa qualche GB, lo zip ci mette qualche minuto.
 # ------------------------------------------------------------------
-VARIANT    ?= 5
 CORNER     ?= typ
 GENUS_ARGS ?=
 
 .PHONY: genus_power
 genus_power:
+	$(call require_variant,$(ORFS_RESULTS)/$(VARIANT)/6_final.v)
 	python3 scripts/gen_genus_power.py --variant $(VARIANT) --corner $(CORNER) $(GENUS_ARGS)
 
 listen:

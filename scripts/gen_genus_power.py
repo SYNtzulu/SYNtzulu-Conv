@@ -253,7 +253,9 @@ SCOPE DEL VCD
 
 def main():
     ap = argparse.ArgumentParser(description="Prepara il pacchetto Genus per report_power.")
-    ap.add_argument("--variant", default="5", help="variante ORFS (default 5)")
+    # Obbligatoria, senza default: puntare alla variante sbagliata non produce
+    # un errore ma un pacchetto plausibile e sbagliato.
+    ap.add_argument("--variant", required=True, help="variante ORFS (obbligatoria)")
     ap.add_argument("--app", default="emg", help="applicazione (default emg)")
     ap.add_argument("--corner", default="typ", choices=sorted(CORNERS), help="corner dei .lib")
     ap.add_argument("--vcd", default=None, help="VCD post-layout (default work/pl_tb_serv.vcd)")
