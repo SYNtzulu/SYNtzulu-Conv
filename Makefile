@@ -80,7 +80,7 @@ simulate_post_syn:
 # include anche tapcell/fill/antenna diode e i buffer di CTS.
 #   make simulate_post_layout
 #   make simulate_post_layout SOC_NETLIST_PL=<altra netlist>
-SOC_NETLIST_PL ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv/1/6_final.v
+SOC_NETLIST_PL ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv/5/6_final.v
 
 simulate_post_layout:
 	cd firmware && make -B
@@ -95,6 +95,31 @@ simulate_post_layout:
 
 .PHONY: sim_post_layout
 sim_post_layout: simulate_post_layout
+
+# ------------------------------------------------------------------
+#  Pacchetto per la stima di potenza con Genus
+#
+#      make genus_power
+#      make genus_power VARIANT=3 CORNER=slow
+#      make genus_power GENUS_ARGS=--no-zip
+#
+#  Mette in work/genus_power_<app>_v<variante>.zip due script Genus (una
+#  finestra di idle e una di inferenza), la netlist post-layout con .sdc e
+#  .spef, i .lib del corner e il VCD della post-layout.
+#
+#  Prerequisiti, entrambi prodotti da "make simulate_post_layout":
+#    - work/pl_tb_serv.vcd                        quindi SENZA +nodump
+#    - sim/results/<app>/power_windows_pl.txt     da cui vengono gli istanti
+#
+#  Il VCD pesa qualche GB, lo zip ci mette qualche minuto.
+# ------------------------------------------------------------------
+VARIANT    ?= 5
+CORNER     ?= typ
+GENUS_ARGS ?=
+
+.PHONY: genus_power
+genus_power:
+	python3 scripts/gen_genus_power.py --variant $(VARIANT) --corner $(CORNER) $(GENUS_ARGS)
 
 listen:
 	sudo rm -f output/serial.txt || true

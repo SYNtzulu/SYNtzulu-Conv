@@ -5,6 +5,10 @@
 
 # Build / sim work products
 work/*.vcd
+# pacchetto per Genus, prodotto da "make genus_power": lo zip contiene il VCD
+# post-layout e supera abbondantemente il GB. Si rigenera con un comando.
+work/genus_power_*/
+work/genus_power_*.zip
 rtl_sim
 gate_sim
 ps_sim
