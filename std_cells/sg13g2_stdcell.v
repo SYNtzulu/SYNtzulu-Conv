@@ -987,11 +987,21 @@ module sg13g2_lgcp_1 (GCLK, GATE, CLK);
 		$width (posedge CLK, 0, 0, notifier);
 		$width (negedge CLK, 0, 0, notifier);
 	endspecify
+	`else
+	// delayed_CLK e delayed_GATE non hanno un driver proprio: li pilota il
+	// meccanismo dei delayed-net di $setuphold, che vive dentro lo specify qui
+	// sopra. Questa e' l'unica cella della libreria (con sg13g2_slgcp_1) ad
+	// avere lo specify sotto `ifndef FUNCTIONAL, e tutte le simulazioni di
+	// netlist di questo repo girano con -DFUNCTIONAL: senza le due assign le
+	// wire restano scollegate e GCLK esce X per sempre, cioe' wb_clk = x e il
+	// SoC non parte. Ritardo zero, funzionalmente identico.
+	assign delayed_CLK  = CLK;
+	assign delayed_GATE = GATE;
 	`endif
 endmodule
 `endcelldefine
 
-// type: mux2 
+// type: mux2
 `timescale 1ns/10ps
 `celldefine
 module sg13g2_mux2_1 (X, A0, A1, S);
@@ -1639,6 +1649,14 @@ module sg13g2_slgcp_1 (GCLK, GATE, SCE, CLK);
 		$width (posedge CLK, 0, 0, notifier);
 		$width (negedge CLK, 0, 0, notifier);
 	endspecify
+	`else
+	// Stesso problema di sg13g2_lgcp_1: con -DFUNCTIONAL lo specify sparisce e
+	// con lui i driver dei delayed-net. Questa cella oggi non e' istanziata
+	// (e' in DONT_USE_CELLS e il design non usa lo scan), ma se ci finisse
+	// darebbe GCLK = x senza nessun messaggio.
+	assign delayed_CLK  = CLK;
+	assign delayed_GATE = GATE;
+	assign delayed_SCE  = SCE;
 	`endif
 endmodule
 `endcelldefine

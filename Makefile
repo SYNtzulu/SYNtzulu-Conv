@@ -16,7 +16,10 @@ simulate:
 	cd firmware && make -B
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
-	iverilog -DFUNCTIONAL -DOPENROAD_CLKGATE -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/* std_cells/*
+	# -DOPENROAD_CLKGATE non serve piu': il gate e' rtl/servant/syntzulu_icg.v,
+	# che sceglie il modello comportamentale sul -DFUNCTIONAL che c'e' gia'.
+	# Per disattivare il gating in sim: iverilog ... -DNO_CLKGATE
+	iverilog -DFUNCTIONAL -o rtl_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv rtl/servant/* rtl/serv/* rtl/syntzulu/* rtl/memorie_ihp/* rtl/behavioural_ihp/* std_cells/*
 	vvp rtl_sim $(SIMFLAGS)
 	rm rtl_sim
 	mv tb_serv.vcd work/
@@ -60,14 +63,14 @@ setup_orfs:
 # e le std cell / IO IHP.
 #   make simulate_post_syn
 #   make simulate_post_syn SOC_NETLIST=<altra netlist>
-SOC_NETLIST ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv/1/1_synth.v
+SOC_NETLIST ?= /home/luca/OpenROAD-flow-scripts_new/flow/results/ihp-sg13g2/SYNtzulu_Conv/5/1_synth.v
 
 simulate_post_syn:
 	cd firmware && make -B
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
 	iverilog -DFUNCTIONAL -DPSIM -o post_syn_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv $(SOC_NETLIST) rtl/behavioural_ihp/* std_cells/*
-	vvp post_syn_sim
+	vvp post_syn_sim $(SIMFLAGS)
 	rm post_syn_sim
 	mv ps_tb_serv.vcd work/
 	gtkwave --save=work/serv_waves.gtkw work/ps_tb_serv.vcd &
@@ -84,9 +87,10 @@ simulate_post_layout:
 	python3 scripts/gen_rom_boot.py                 # ROM di boot dal firmware fresco
 	python3 scripts/build_flash_asic.py emg         # flash ASIC (campioni+pesi+delta+firmware)
 	iverilog -DFUNCTIONAL -DPSIM -o post_layout_sim  rtl/define.v sim/tb/servant_tb_mnist.v sim/tb/servant_sim.v sim/tb/uart_decoder.v sim/tb/vlog_tb_utils.v sim/tb/flash_spi_sim.sv sim/tb/nettype_wire.v $(SOC_NETLIST_PL) rtl/behavioural_ihp/* std_cells/*
-	vvp post_layout_sim
+	vvp post_layout_sim $(SIMFLAGS)
 	rm post_layout_sim
 	mv ps_tb_serv.vcd work/pl_tb_serv.vcd
+	@mv -f sim/results/emg/power_windows_ps.txt sim/results/emg/power_windows_pl.txt 2>/dev/null || true
 	gtkwave --save=work/serv_waves.gtkw work/pl_tb_serv.vcd &
 
 .PHONY: sim_post_layout

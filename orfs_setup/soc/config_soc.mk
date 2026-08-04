@@ -22,7 +22,7 @@ export DESIGN_NICKNAME = SYNtzulu_Conv
 #
 #   1  baseline
 #   2  SDC pad constraints + macro grid snapped to tracks + slew repair below
-export FLOW_VARIANT    = 3
+export FLOW_VARIANT    = 5
 
 #
 # rtl/define.v MUST come first: it defines EMG and CONFIG_PATH, which
@@ -31,9 +31,17 @@ export FLOW_VARIANT    = 3
 # Deliberately NOT listed:
 #   rtl/behavioural_ihp/*  simulation models of the RAMs; in synthesis the
 #                          macros come from the lef/lib/gds below
-#   std_cells/*            the platform already provides the IO cells and
-#                          OPENROAD_CLKGATE (CLKGATE_MAP_FILE in the platform
-#                          config.mk); those files are simulation only
+#   std_cells/*            the platform already provides the IO cells; those
+#                          files are simulation only
+#
+# The clock gate is NOT the platform's OPENROAD_CLKGATE. That module comes from
+# CLKGATE_MAP_FILE, which synth_preamble.tcl reads without any -D, so its body
+# is always "assign GCK = CK": the netlist came out with all 4617 flops on the
+# ungated i_clk. Setting CLKGATE_MAP_FILE here does not help either - the
+# platform config.mk reassigns it with "=" AFTER this file is included
+# (flow/Makefile:93 vs scripts/variables.mk:51). The design therefore carries
+# its own wrapper in rtl/servant/syntzulu_icg.v, picked up by the wildcard
+# below, which instantiates sg13g2_lgcp_1 directly.
 export VERILOG_FILES = $(RTL_ROOT)/define.v \
                        $(RTL_ROOT)/servant/* \
                        $(RTL_ROOT)/serv/* \

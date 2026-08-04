@@ -49,24 +49,39 @@ module clk_gen_wb #(
     assign o_rst = ~rst_reg[RESET_LENGTH-1];
 
     // ---------------------------------------------------------------------
-    // WAKE PATH : timer_irq resynchronized into the i_clk domain (2-FF), then
-    //   turned into a one-cycle RISING-EDGE pulse.
+    // WAKE PATH : timer_irq resynchronized into the i_clk domain (2-FF) and
+    //   used as a LEVEL: while the interrupt is asserted the clock is forced
+    //   on and the gate cannot be armed.
     //
-    //   The edge detect is not cosmetic. servant_slow_timer holds o_irq high
-    //   for two slow_tick periods (200 us at SLOW_DIV = 2400 / 24 MHz) and the
-    //   firmware arms the gate from inside the ISR, i.e. while the interrupt
-    //   is still asserted by definition. Waking on the LEVEL made irq_sync win
-    //   the priority chain below forever, so clk_en could never reach 0 and
-    //   the core never slept. Wake on the edge, and the arm that follows it is
-    //   free to take effect.
+    //   The level is the whole point, not a lazy edge detect. The firmware
+    //   arms the gate from the idle loop
+    //
+    //       while (1) DEV_WRITE(CLOCK_GATE_CTRL, 1);
+    //
+    //   and GATE_DELAY lets the core run 64 more cycles after the arming
+    //   store retires, so when o_clk finally stops SERV is already parked on
+    //   the NEXT store of the same loop. Waking on the edge alone, the core
+    //   retired that store three cycles after clk_en went back to 1 - long
+    //   before the trap could be taken - re-armed, and was asleep again with
+    //   the interrupt still pending. o_irq then expired on its own (the timer
+    //   deasserts it after two slow_ticks) and the wake-up was simply lost:
+    //   measured one gate-on per timer period but only one inference every
+    //   two, i.e. half the samples silently dropped.
+    //
+    //   Holding clk_en on for the whole o_irq pulse (200 us at SLOW_DIV =
+    //   2400 / 24 MHz, ~4800 cycles) gives the core all the time it needs to
+    //   reach a trap boundary; once inside the ISR nothing writes
+    //   CLOCK_GATE_CTRL any more, so sleep resumes only after the idle loop
+    //   is reached again. Same structure as the iCE40 design, where
+    //   accelerator_if.v clears the gate register asynchronously on
+    //   "timer_irq || i_wb_rst" - here it is synchronous to the always-on
+    //   i_clk instead of an async reset off an unsynchronized pin.
     // ---------------------------------------------------------------------
-    reg irq_meta, irq_sync, irq_sync_q;
+    reg irq_meta, irq_sync;
     always @(posedge i_clk) begin
-        irq_meta   <= timer_irq;
-        irq_sync   <= irq_meta;
-        irq_sync_q <= irq_sync;
+        irq_meta <= timer_irq;
+        irq_sync <= irq_meta;
     end
-    wire irq_rise = irq_sync & ~irq_sync_q;
 
     // ---------------------------------------------------------------------
     // CLOCK-ENABLE / SLEEP CONTROL  (runs on i_clk)
@@ -95,8 +110,9 @@ module clk_gen_wb #(
         if (o_rst) begin
             gate_pend <= 1'b0;
             gate_cnt  <= {GD_W{1'b0}};
-        end else if (irq_rise) begin
+        end else if (irq_sync) begin
             gate_pend <= 1'b0;
+            gate_cnt  <= {GD_W{1'b0}};
         end else if (gate_arm) begin
             gate_pend <= 1'b1;
             gate_cnt  <= GATE_DELAY;
@@ -109,7 +125,7 @@ module clk_gen_wb #(
     always @(posedge i_clk or posedge o_rst)
         if (o_rst)
             clk_en <= 1'b1;
-        else if (irq_rise)
+        else if (irq_sync)
             clk_en <= 1'b1;
         else if (gate_now)
             clk_en <= 1'b0;
@@ -138,12 +154,13 @@ module clk_gen_wb #(
 
     // ---------------------------------------------------------------------
     // GATED SYSTEM CLOCK
-    //   Cella di clock gating condivisa (std_cells/cells_clkgate.v): con
-    //   `define OPENROAD_CLKGATE mappa sulla cella reale sg13g2_lgcp_1,
-    //   altrimenti e' un pass-through (GCK = CK) -> in sim il clock NON viene
-    //   gated e il core non dorme mai (funzionalmente equivalente).
+    //   rtl/servant/syntzulu_icg.v: cella vera sg13g2_lgcp_1 in sintesi,
+    //   modello comportamentale in simulazione. Era OPENROAD_CLKGATE, cioe' il
+    //   wrapper della piattaforma ORFS, che in sintesi si riduce sempre a
+    //   "assign GCK = CK" - la netlist usciva senza nessun gate. Il perche' per
+    //   esteso e' in testa a syntzulu_icg.v.
     // ---------------------------------------------------------------------
-    OPENROAD_CLKGATE u_icg (
+    syntzulu_icg u_icg (
         .CK  (i_clk),
         .E   (clk_en),
         .GCK (o_clk)

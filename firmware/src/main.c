@@ -97,13 +97,22 @@ int main(void)
      * meta'. Qui invece il contesto e' gia' stato ripristinato, quindi il core
      * si ferma in un punto pulito e riparte da qui alla sveglia.
      *
-     * La scrittura si ripete a ogni giro: dopo il risveglio la ISR gira,
-     * torna qui e riarma. La wfi su SERV non e' implementata come stallo, ma
-     * il clock lo ferma comunque clk_gen_wb.
+     * NIENTE wfi. SERV non la implementa come stallo: serv_decode.v:145 fa
+     *
+     *     wire co_e_op = opcode[4] & opcode[2] & !op21 & !(|funct3);
+     *
+     * che con funct3 = 0 e instr[21] = 0 e' vera anche per wfi (0x10500073),
+     * e serv_state.v:190 la trasforma in un trap verso mtvec esattamente come
+     * una ecall. Il risultato era un loop wfi -> trap -> irq_entry -> mret
+     * -> wfi che saltava per sempre la scrittura qui sopra: il gate si armava
+     * una volta sola e poi mai piu'. Misurato: una sola finestra di idle, poi
+     * la ISR a ripetizione ogni 1.136 ms senza nessun timer_irq.
+     *
+     * A fermare il core ci pensa clk_gen_wb, non l'istruzione: la CPU si
+     * congela dentro questo ciclo e riparte da qui alla sveglia.
      */
     while (1) {
         DEV_WRITE(CLOCK_GATE_CTRL, 1);
-        asm volatile("wfi");
     }
 }
 

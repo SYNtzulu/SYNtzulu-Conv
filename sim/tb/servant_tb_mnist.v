@@ -47,7 +47,15 @@ parameter LABEL_FILE_OUTPUT   = {"sim/results/",`PATH,"/label.txt"};
 parameter TARGET_FILE          = {"sim/target/",`PATH,"/snn_inference.txt"};
 parameter TARGET_FILE_BINNING= {"sim/target/",`PATH,"/spike_vec.txt"};
 parameter OUTPUT_FILE_BINNING = {"sim/results/",`PATH,"/spike_vec.txt"};
+// Nome distinto per RTL e netlist, come gia' si fa col VCD: altrimenti una run
+// post-sintesi sovrascrive in silenzio le finestre misurate in RTL e non si
+// capisce piu' da dove vengono i numeri. Il target simulate_post_layout
+// rinomina poi _ps in _pl, esattamente come fa con ps_tb_serv.vcd.
+`ifndef PSIM
 parameter POWER_WINDOW_FILE   = {"sim/results/",`PATH,"/power_windows.txt"};
+`else
+parameter POWER_WINDOW_FILE   = {"sim/results/",`PATH,"/power_windows_ps.txt"};
+`endif
 
 parameter MAX_ERRORS = 2;
 
@@ -93,6 +101,10 @@ initial begin
   // istruzioni via SPI occupa i primi ~6.3 ms, e un ciclo campione+inferenza
   // ne vale altri ~2. Con +runtime_ns=25000000 si vedono 4-5 cicli completi.
   dummy = $value$plusargs("runtime_ns=%d", runtime_ns);
+
+`ifndef PSIM
+  trace_on = $test$plusargs("gatetrace");
+`endif
 
   #20000
   buttons = 0;
@@ -297,6 +309,65 @@ end
       end
     end
   end
+
+  // ==========================================================================
+  //  TRACCIA DEL GATING (+gatetrace)
+  //
+  //  Stampa ogni fronte dei quattro segnali che decidono se il core dorme.
+  //  Serve a capire perche' il gate si chiude una volta e poi non piu': la
+  //  scrittura Wishbone che arma il gate e' ancora in volo quando il clock si
+  //  ferma, quindi wb_clk_cyc (e con lui gate_arm) resta alto per tutto il
+  //  sonno e si sovrappone al risveglio.
+  //
+  //  Solo RTL: in PSIM questi nodi interni non hanno tutti un equivalente.
+  // ==========================================================================
+`ifndef PSIM
+  wire dbg_gate_arm  = servant_sim_i.soc_i.servant.clkgen.gate_arm;
+  wire dbg_irq_sync  = servant_sim_i.soc_i.servant.clkgen.irq_sync;
+  wire dbg_timer_irq = servant_sim_i.soc_i.servant.timer_irq;
+  wire dbg_cyc       = servant_sim_i.soc_i.servant.wb_clk_cyc;
+  wire dbg_tcyc      = servant_sim_i.soc_i.servant.wb_timer_cyc;
+  wire dbg_twe       = servant_sim_i.soc_i.servant.wb_timer_we;
+  wire dbg_dcyc      = servant_sim_i.soc_i.servant.wb_dbus_cyc;
+  wire dbg_dack      = servant_sim_i.soc_i.servant.wb_dbus_ack;
+
+  reg trace_on = 1'b0;
+  reg dbg_ga_q, dbg_is_q, dbg_ti_q, dbg_cy_q, dbg_ce_q;
+  reg dbg_tc_q, dbg_tw_q, dbg_dc_q, dbg_da_q;
+
+  always @(posedge i_clk) begin
+    dbg_ga_q <= dbg_gate_arm;
+    dbg_is_q <= dbg_irq_sync;
+    dbg_ti_q <= dbg_timer_irq;
+    dbg_cy_q <= dbg_cyc;
+    dbg_ce_q <= clk_en_probe;
+    dbg_tc_q <= dbg_tcyc;
+    dbg_tw_q <= dbg_twe;
+    dbg_dc_q <= dbg_dcyc;
+    dbg_da_q <= dbg_dack;
+
+    if (trace_on) begin
+      if (dbg_tcyc !== dbg_tc_q)
+        $display("  [trace %0.3f] timer_cyc   -> %b", $realtime, dbg_tcyc);
+      if (dbg_twe  !== dbg_tw_q)
+        $display("  [trace %0.3f] timer_we    -> %b", $realtime, dbg_twe);
+      if (dbg_dcyc !== dbg_dc_q)
+        $display("  [trace %0.3f] dbus_cyc    -> %b", $realtime, dbg_dcyc);
+      if (dbg_dack !== dbg_da_q)
+        $display("  [trace %0.3f] dbus_ack    -> %b", $realtime, dbg_dack);
+      if (dbg_timer_irq  !== dbg_ti_q)
+        $display("  [trace %0.3f] timer_irq   -> %b", $realtime, dbg_timer_irq);
+      if (dbg_irq_sync   !== dbg_is_q)
+        $display("  [trace %0.3f] irq_sync    -> %b", $realtime, dbg_irq_sync);
+      if (dbg_cyc        !== dbg_cy_q)
+        $display("  [trace %0.3f] clkgen_cyc  -> %b", $realtime, dbg_cyc);
+      if (dbg_gate_arm   !== dbg_ga_q)
+        $display("  [trace %0.3f] gate_arm    -> %b", $realtime, dbg_gate_arm);
+      if (clk_en_probe   !== dbg_ce_q)
+        $display("  [trace %0.3f] clk_en      -> %b", $realtime, clk_en_probe);
+    end
+  end
+`endif
 
   task report_power_windows;
     begin
