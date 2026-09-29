@@ -125,3 +125,12 @@ along with the number of compared samples and errors.
 | `instruction.hex` | layer topology / instructions (16-bit words) |
 | `snn_inference.txt` | software reference for `p1` / `p2` (checked online) |
 | `config.txt` | build-time configuration included by the TB |
+
+
+## Ownership
+
+SYNtzulu-Conv was developed at the Department of Electrical and Electronic Engineering (DIEE),
+University of Cagliari (Università degli Studi di Cagliari – UniCA), Italy.
+All rights to this software are owned by the University of Cagliari.
+
+Copyright © 2026 University of Cagliari.
