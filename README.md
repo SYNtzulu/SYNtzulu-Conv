@@ -592,3 +592,12 @@ We would like to thank the following repositories and authors for providing modu
 - [BasicUART](https://github.com/STjurny/BasicUART)
 - [ice40_power](https://github.com/tinyvision-ai-inc/ice40_power)
 - [picorv32](https://github.com/YosysHQ/picorv32)
+
+
+## Ownership
+
+SYNtzulu-Conv was developed at the Department of Electrical and Electronic Engineering (DIEE),
+University of Cagliari (Università degli Studi di Cagliari – UniCA), Italy.
+All rights to this software are owned by the University of Cagliari.
+
+Copyright © 2026 University of Cagliari.
